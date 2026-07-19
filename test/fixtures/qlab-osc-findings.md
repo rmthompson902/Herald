@@ -47,7 +47,7 @@ Parse: `JSON.parse(msg.args[0].value)`, check `.status === 'ok'`, use `.data`.
 | `/cue/{number}/levels` | Returns the level matrix — see below. |
 | `/cue/{number}/uniqueID` | Returns QLab's internal cue id (matches what `/cueLists` already shows). |
 | `/cue/{number}/valuesForKeys` (JSON array of key names, e.g. `["duration","uniqueID"]`) | Bulk query, returns a single JSON object with all requested keys — cheaper than separate calls if we need duration+uniqueID+levels together. **Worth trying `"levels"` as a key here too** to fold it into the same round trip. |
-| `/cue/{number}/start`, `/cue/{number}/stop` | Confirmed trigger/stop both work once OSC permissions are enabled. |
+| `/cue/{number}/start`, `/cue/{number}/stop` | Confirmed trigger/stop both work once OSC permissions are enabled. **Important asymmetry**: QLab only sends an explicit `/reply/cue/{n}/start` (or `/stop`) message on **denial** - a successful start/stop plays/stops the cue with no reply at all. A naive request/await-reply wrapper (our first cut of `oscClient.request()`) times out on every successful call despite the cue actually working. Fixed via `oscClient.requestOptionalReply()`, which resolves on silence but still rejects if an explicit denied reply does arrive within the window - used by `qlabProtocol.playCue`/`stopCue`. Confirmed live: `request()` timed out on a real successful `/cue/101/start` (audibly confirmed playing) before this fix; `requestOptionalReply()` resolves cleanly after the fix. |
 | `/updates 1` / `/updates 0` | Subscribe/unsubscribe — see below. |
 
 ## `/updates` push events — no payload, fires for the whole ancestry chain

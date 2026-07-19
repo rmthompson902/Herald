@@ -1,0 +1,28 @@
+{
+  "description": "Real /cueLists reply .data payload, captured 2026-07-19 against QLab 5.6.2 (workspace 310C5F76-7049-4413-896A-452758323543).",
+  "data": [
+    {
+      "number": "",
+      "uniqueID": "BED075D5-CC10-40C0-88B7-93D2FCAB82C7",
+      "listName": "Zone 1",
+      "type": "Cart",
+      "name": "Zone 1",
+      "armed": true,
+      "cues": [
+        { "number": "101", "uniqueID": "780D5905-28E3-47D3-9718-7D668C957415", "listName": "01_AExM_Show Will Begin Soon.wav", "type": "Audio", "name": "", "armed": true, "cues": [] },
+        { "number": "102", "uniqueID": "7FFBEF14-D3A1-4D31-B8B2-3BD2693D6E67", "listName": "02_AExM_Show Begin in 10.wav", "type": "Audio", "name": "", "armed": true, "cues": [] },
+        { "number": "103", "uniqueID": "5B36D9B7-0590-4E71-92F2-BB307C1E2964", "listName": "03_AExM_Show Begin in 5.wav", "type": "Audio", "name": "", "armed": true, "cues": [] },
+        { "number": "104", "uniqueID": "C8E49C6E-136D-4068-B941-CA8830B9B277", "listName": "04_AExM_Welcome Reid C.wav", "type": "Audio", "name": "", "armed": true, "cues": [] }
+      ]
+    },
+    {
+      "number": "",
+      "uniqueID": "7AF8D82C-99B6-472B-9C52-0DA66EC9B05E",
+      "listName": "Zone 2",
+      "type": "Cart",
+      "name": "Zone 2",
+      "armed": true,
+      "cues": []
+    }
+  ]
+}
