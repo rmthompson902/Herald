@@ -6,6 +6,7 @@ logs/
 *.log
 
 .DS_Store
+.env
 
 node-red/flows_cred.json
 node-red/.config.*.json
