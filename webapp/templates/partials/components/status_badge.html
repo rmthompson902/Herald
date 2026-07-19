@@ -1,0 +1,74 @@
+{# Status badge component - reusable status indicators #}
+{% macro status_badge(status, type='', icon='', text='', tooltip='', additional_classes='') %}
+    {% set badge_class = '' %}
+    {% set badge_icon = icon %}
+    {% set badge_text = text or status %}
+
+    {# Determine badge styling based on status #}
+    {% if type == 'schedule' %}
+        {% if status == 'enabled' %}
+            {% set badge_class = 'bg-success' %}
+            {% set badge_icon = badge_icon or 'fas fa-toggle-on' %}
+        {% elif status == 'disabled' %}
+            {% set badge_class = 'bg-secondary' %}
+            {% set badge_icon = badge_icon or 'fas fa-toggle-off' %}
+        {% endif %}
+    {% elif type == 'connection' %}
+        {% if status == 'connected' %}
+            {% set badge_class = 'bg-success' %}
+            {% set badge_icon = badge_icon or 'fas fa-plug' %}
+        {% elif status == 'disconnected' %}
+            {% set badge_class = 'bg-danger' %}
+            {% set badge_icon = badge_icon or 'fas fa-times-circle' %}
+        {% endif %}
+    {% elif type == 'armed' %}
+        {% if status == 'armed' %}
+            {% set badge_class = 'bg-success' %}
+            {% set badge_icon = badge_icon or 'fas fa-shield-alt' %}
+        {% elif status == 'disarmed' %}
+            {% set badge_class = 'bg-warning text-dark' %}
+            {% set badge_icon = badge_icon or 'fas fa-exclamation-triangle' %}
+        {% endif %}
+    {% elif type == 'queue' %}
+        {% if status == 'playing' %}
+            {% set badge_class = 'bg-success' %}
+            {% set badge_icon = badge_icon or 'fas fa-play' %}
+        {% elif status == 'waiting' %}
+            {% set badge_class = 'bg-warning text-dark' %}
+            {% set badge_icon = badge_icon or 'fas fa-clock' %}
+        {% endif %}
+    {% else %}
+        {# Generic badge styling #}
+        {% set badge_class = badge_class or 'bg-secondary' %}
+        {% set badge_icon = badge_icon or 'fas fa-info-circle' %}
+    {% endif %}
+
+<span class="badge {{ badge_class }} {{ additional_classes }}"
+      {% if tooltip %}data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="{{ tooltip }}"{% endif %}>
+    {% if badge_icon %}<i class="{{ badge_icon }} me-1"></i>{% endif %}{{ badge_text }}
+</span>
+{% endmacro %}
+
+{# Schedule enabled/disabled badge #}
+{% macro schedule_status_badge(is_enabled, tooltip='') %}
+    {% set status = 'enabled' if is_enabled else 'disabled' %}
+    {% set status_text = 'Enabled' if is_enabled else 'Disabled' %}
+
+    {{ status_badge(status, 'schedule', '', status_text, tooltip) }}
+{% endmacro %}
+
+{# QLab connection status badge #}
+{% macro connection_status_badge(is_connected, tooltip='') %}
+    {% set status = 'connected' if is_connected else 'disconnected' %}
+    {% set status_text = 'QLab Connected' if is_connected else 'QLab Disconnected' %}
+
+    {{ status_badge(status, 'connection', '', status_text, tooltip) }}
+{% endmacro %}
+
+{# Scheduler armed/disarmed badge - gated on confirmed QLab connectivity #}
+{% macro armed_status_badge(is_armed, tooltip='') %}
+    {% set status = 'armed' if is_armed else 'disarmed' %}
+    {% set status_text = 'Scheduler Armed' if is_armed else 'Scheduler Disarmed' %}
+
+    {{ status_badge(status, 'armed', '', status_text, tooltip) }}
+{% endmacro %}

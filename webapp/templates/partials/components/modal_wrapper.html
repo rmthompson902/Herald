@@ -1,0 +1,43 @@
+{# Modal wrapper component - standardized modal structure #}
+{% macro modal_wrapper(modal_id, title, body_content='', footer_content='', size='', backdrop='true', keyboard='true') %}
+<div class="modal fade"
+     id="{{ modal_id }}"
+     tabindex="-1"
+     aria-labelledby="{{ modal_id }}Label"
+     aria-hidden="true"
+     data-bs-backdrop="{{ backdrop }}"
+     data-bs-keyboard="{{ keyboard }}">
+    <div class="modal-dialog{% if size %} modal-{{ size }}{% endif %}">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="{{ modal_id }}Label">{{ title }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                {{ body_content | safe }}
+            </div>
+            {% if footer_content %}
+            <div class="modal-footer">
+                {{ footer_content | safe }}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endmacro %}
+
+{# Modal footer buttons component #}
+{% macro modal_footer_buttons(cancel_text='Cancel', confirm_text='Save', confirm_id='', confirm_class='btn-primary', cancel_tooltip='', confirm_tooltip='') %}
+<button type="button"
+        class="btn btn-secondary"
+        data-bs-dismiss="modal"
+        {% if cancel_tooltip %}data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="{{ cancel_tooltip }}"{% endif %}>
+    {{ cancel_text }}
+</button>
+<button type="button"
+        class="btn {{ confirm_class }}"
+        {% if confirm_id %}id="{{ confirm_id }}"{% endif %}
+        {% if confirm_tooltip %}data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="{{ confirm_tooltip }}"{% endif %}>
+    {{ confirm_text }}
+</button>
+{% endmacro %}

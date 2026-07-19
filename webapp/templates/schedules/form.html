@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% import "partials/components/page_header.html" as ph %}
+
+{% block title %}{{ 'Edit Schedule' if schedule else 'Add Schedule' }} - Sitewide Audio Messaging{% endblock %}
+
+{% block content %}
+{{ ph.page_header(
+    'Edit Schedule' if schedule else 'Add Schedule',
+    'Fires ' + schedule.qlabCueNumber + ' on a recurring interval.' if schedule else 'Play a QLab cue on a recurring interval, within an optional time window.',
+    [{'type': 'link', 'url': url_for('schedules_list'), 'text': 'Back to Schedules', 'icon': 'fas fa-arrow-left', 'class': 'btn-secondary'}],
+    [],
+    'fas fa-calendar-alt'
+) }}
+
+<div class="card">
+    <div class="card-body">
+        <form id="scheduleForm" data-schedule-id="{{ schedule.id if schedule else '' }}">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="name" class="form-label">Name</label>
+                    <input type="text" class="form-control" id="name" name="name" required
+                           value="{{ schedule.name if schedule else '' }}" placeholder="e.g. Lobby safety announcement">
+                </div>
+                <div class="col-md-6">
+                    <label for="qlab_cue_number" class="form-label">QLab cue number</label>
+                    <input type="text" class="form-control" id="qlab_cue_number" name="qlab_cue_number" required
+                           list="cueList" value="{{ schedule.qlabCueNumber if schedule else '' }}" placeholder="e.g. 101">
+                    <datalist id="cueList"></datalist>
+                    <div class="form-text">Zones and duration are read live from QLab, not entered here.</div>
+                </div>
+
+                <div class="col-md-4">
+                    <label for="interval_seconds" class="form-label">Repeat every (seconds)</label>
+                    <input type="number" min="1" step="1" class="form-control" id="interval_seconds" name="interval_seconds" required
+                           value="{{ schedule.intervalSeconds if schedule else '' }}">
+                </div>
+                <div class="col-md-4">
+                    <label for="start_time" class="form-label">Active window start <span class="text-muted">(optional)</span></label>
+                    <input type="time" class="form-control" id="start_time" name="start_time"
+                           value="{{ (schedule.startTime or '') if schedule else '' }}">
+                </div>
+                <div class="col-md-4">
+                    <label for="end_time" class="form-label">Active window end <span class="text-muted">(optional)</span></label>
+                    <input type="time" class="form-control" id="end_time" name="end_time"
+                           value="{{ (schedule.endTime or '') if schedule else '' }}">
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label d-block">Active days</label>
+                    {% set weekday_labels = [('1', 'Mon'), ('2', 'Tue'), ('3', 'Wed'), ('4', 'Thu'), ('5', 'Fri'), ('6', 'Sat'), ('7', 'Sun')] %}
+                    {% set active_weekdays = schedule.weekdays if schedule else [1, 2, 3, 4, 5, 6, 7] %}
+                    {% for value, label in weekday_labels %}
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input weekday-check" type="checkbox" name="weekdays" value="{{ value }}" id="weekday{{ value }}"
+                               {% if value|int in active_weekdays %}checked{% endif %}>
+                        <label class="form-check-label" for="weekday{{ value }}">{{ label }}</label>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="col-md-6">
+                    <label for="date_range_start" class="form-label">Date range start <span class="text-muted">(optional)</span></label>
+                    <input type="date" class="form-control" id="date_range_start" name="date_range_start"
+                           value="{{ (schedule.dateRangeStart or '') if schedule else '' }}">
+                </div>
+                <div class="col-md-6">
+                    <label for="date_range_end" class="form-label">Date range end <span class="text-muted">(optional)</span></label>
+                    <input type="date" class="form-control" id="date_range_end" name="date_range_end"
+                           value="{{ (schedule.dateRangeEnd or '') if schedule else '' }}">
+                </div>
+
+                <div class="col-12">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="enabled" name="enabled"
+                               {% if schedule is none or schedule.enabled %}checked{% endif %}>
+                        <label class="form-check-label" for="enabled">Enabled</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4 d-flex gap-2">
+                <button type="submit" class="btn btn-primary" id="scheduleSubmitBtn">
+                    <i class="fas fa-check me-1"></i> {{ 'Save Changes' if schedule else 'Add Schedule' }}
+                </button>
+                <a href="{{ url_for('schedules_list') }}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', path='js/schedule_form.js') }}"></script>
+{% endblock %}

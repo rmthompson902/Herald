@@ -1,0 +1,56 @@
+{% macro empty_state(icon, title, description, action_text='', action_url='', action_modal='', action_classes='btn btn-primary') %}
+{#
+Empty State Component - standardized empty states for list pages.
+
+Parameters:
+- icon: Font Awesome icon class (without 'fas fa-' prefix)
+- title: Main heading text
+- description: Description text explaining the empty state
+- action_text: Text for the action button (optional)
+- action_url: URL for the action button (optional)
+- action_modal: Modal target for the action button (optional, use instead of action_url)
+- action_classes: CSS classes for the action button (default: btn btn-primary)
+
+Usage:
+{{ empty_state('calendar-plus', 'No schedules yet', 'Add a schedule to start playing recurring messages.', 'Add Schedule', action_url=url_for('schedule_new')) }}
+{{ empty_state('bullhorn', 'No VOG messages yet', 'Add an emergency message so it is ready to trigger.', 'Add VOG Message', action_url=url_for('vog_new')) }}
+#}
+
+<div class="empty-state">
+    <div class="empty-state-icon">
+        <i class="fas fa-{{ icon }}"></i>
+    </div>
+    <h3>{{ title }}</h3>
+    <p class="mb-4">{{ description }}</p>
+    {% if action_text %}
+        {% if action_modal %}
+            <button type="button" class="{{ action_classes }}" data-bs-toggle="modal" data-bs-target="{{ action_modal }}">
+                <i class="fas fa-plus me-2"></i>{{ action_text }}
+            </button>
+        {% elif action_url %}
+            <a href="{{ action_url }}" class="{{ action_classes }}">
+                <i class="fas fa-plus me-2"></i>{{ action_text }}
+            </a>
+        {% else %}
+            <button type="button" class="{{ action_classes }}">
+                <i class="fas fa-plus me-2"></i>{{ action_text }}
+            </button>
+        {% endif %}
+    {% endif %}
+</div>
+{% endmacro %}
+
+{% macro table_empty_state(icon, message, colspan=5) %}
+{#
+Table Empty State Component - for empty states within tables.
+
+Usage:
+{{ table_empty_state('check-circle', 'Nothing queued in any zone right now') }}
+#}
+<tr>
+    <td colspan="{{ colspan }}" class="text-center text-muted py-4">
+        <i class="fas fa-{{ icon }} me-2"></i>
+        {{ message }}
+    </td>
+</tr>
+{% endmacro %}

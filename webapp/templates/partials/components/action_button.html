@@ -1,0 +1,51 @@
+{% macro action_button(type, icon, text='', tooltip='', classes='', data_attrs={}, variant='outline') %}
+{#
+Action Button Component - standardized row/toolbar action buttons.
+
+Parameters:
+- type: Button type (edit, delete, add, save, refresh, play, trigger, toggle)
+- icon: Font Awesome icon class (without 'fas fa-' prefix)
+- text: Button text (optional, if empty creates icon-only button)
+- tooltip: Tooltip text for the button
+- classes: Additional CSS classes
+- data_attrs: Dictionary of data attributes to add
+- variant: Button variant (outline, solid) - default is outline
+
+Usage:
+{{ action_button('edit', 'edit', 'Edit', 'Edit this schedule', data_attrs={'schedule-id': schedule.id}) }}
+{{ action_button('trigger', 'bullhorn', 'Trigger', 'Play this VOG message now', variant='solid') }}
+#}
+
+{% set button_configs = {
+    'edit': {'color': 'info', 'default_tooltip': 'Edit'},
+    'delete': {'color': 'danger', 'default_tooltip': 'Delete'},
+    'add': {'color': 'primary', 'default_tooltip': 'Add new item'},
+    'save': {'color': 'success', 'default_tooltip': 'Save changes'},
+    'refresh': {'color': 'secondary', 'default_tooltip': 'Refresh'},
+    'play': {'color': 'success', 'default_tooltip': 'Play now'},
+    'trigger': {'color': 'danger', 'default_tooltip': 'Trigger VOG message'},
+    'toggle': {'color': 'secondary', 'default_tooltip': 'Enable / disable'}
+} %}
+
+{% set config = button_configs.get(type, {'color': 'secondary', 'default_tooltip': 'Action'}) %}
+
+{% set base_classes = 'btn action-btn' %}
+{% if variant == 'outline' %}
+    {% set color_class = 'btn-outline-' + config.color %}
+{% else %}
+    {% set color_class = 'btn-' + config.color %}
+{% endif %}
+
+{% if not text %}
+    {% set base_classes = base_classes + ' action-btn-notext' %}
+{% endif %}
+
+{% set all_classes = [base_classes, color_class, classes] | select | join(' ') %}
+{% set final_tooltip = tooltip or config.default_tooltip %}
+
+<button type="button" class="{{ all_classes }}"
+        {% if final_tooltip %}data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="{{ final_tooltip }}"{% endif %}
+        {% for attr, value in data_attrs.items() %}data-{{ attr.replace('_', '-') }}="{{ value }}"{% endfor %}>
+    <i class="fas fa-{{ icon }}{% if text %} me-2{% endif %}"></i>{% if text %}{{ text }}{% endif %}
+</button>
+{% endmacro %}

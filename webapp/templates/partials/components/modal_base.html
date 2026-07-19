@@ -1,0 +1,55 @@
+{% macro render_modal(id, title, size='', body_content='', footer_content='', form_id='', form_action='') %}
+<div class="modal fade" id="{{ id }}" tabindex="-1" aria-labelledby="{{ id }}Label" aria-hidden="true">
+    <div class="modal-dialog {{ size }}">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="{{ id }}Label">{{ title }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            {% if form_id %}
+            <form id="{{ form_id }}" {% if form_action %}action="{{ form_action }}"{% endif %}>
+                <div class="modal-body">
+                    {{ body_content | safe }}
+                </div>
+                {% if footer_content %}
+                <div class="modal-footer">
+                    {{ footer_content | safe }}
+                </div>
+                {% endif %}
+            </form>
+            {% else %}
+            <div class="modal-body">
+                {{ body_content | safe }}
+            </div>
+            {% if footer_content %}
+            <div class="modal-footer">
+                {{ footer_content | safe }}
+            </div>
+            {% endif %}
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endmacro %}
+
+{% macro render_confirmation_modal(id, title, message, confirm_text='Confirm', cancel_text='Cancel', confirm_class='btn-danger') %}
+{% set body_content %}
+<p>{{ message }}</p>
+{% endset %}
+
+{% set footer_content %}
+<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ cancel_text }}</button>
+<button type="button" class="btn {{ confirm_class }}" id="{{ id }}ConfirmBtn">{{ confirm_text }}</button>
+{% endset %}
+
+{{ render_modal(id, title, '', body_content, footer_content) }}
+{% endmacro %}
+
+{% macro render_form_modal(id, title, form_id, body_content, submit_text='Save', submit_class='btn-primary', size='') %}
+{% set footer_content %}
+<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+<button type="button" class="btn {{ submit_class }}" id="{{ form_id }}SubmitBtn">{{ submit_text }}</button>
+{% endset %}
+
+{{ render_modal(id, title, size, body_content, footer_content, form_id) }}
+{% endmacro %}

@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% import "partials/components/page_header.html" as ph %}
+{% import "partials/components/empty_state.html" as es %}
+{% import "partials/components/status_badge.html" as sb %}
+{% import "partials/components/action_button.html" as ab %}
+
+{% block title %}VOG Messages - Sitewide Audio Messaging{% endblock %}
+
+{% block content %}
+{{ ph.page_header(
+    'VOG Messages',
+    'Voice of God: manually-triggered emergency messages. Triggering one stops every cue in its zones and plays the message.',
+    [{'type': 'link', 'url': url_for('vog_new'), 'text': 'Add VOG Message', 'icon': 'fas fa-plus', 'class': 'btn-primary'}],
+    [],
+    'fas fa-bullhorn'
+) }}
+
+{% if not vog_messages %}
+    {{ es.empty_state('bullhorn', 'No VOG messages yet', 'Add an emergency message so it is ready to trigger.', 'Add VOG Message', url_for('vog_new')) }}
+{% else %}
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Cue</th>
+                    <th>Zones</th>
+                    <th>Status</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for vog_message in vog_messages %}
+                {% set cue = cue_cache_by_number.get(vog_message.qlabCueNumber) %}
+                <tr>
+                    <td>{{ vog_message.name }}</td>
+                    <td><code>{{ vog_message.qlabCueNumber }}</code></td>
+                    <td>
+                        {% if cue and cue.zones %}
+                            {% for zone in cue.zones %}<span class="badge bg-secondary me-1">{{ zone }}</span>{% endfor %}
+                        {% else %}
+                            <span class="text-muted">not yet cached</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ sb.schedule_status_badge(vog_message.enabled) }}</td>
+                    <td class="text-end">
+                        <div class="d-inline-flex gap-1">
+                            <button type="button" class="btn btn-vog trigger-vog-btn" data-vog-id="{{ vog_message.id }}"
+                                    data-bs-toggle="tooltip" data-bs-title="Trigger this VOG message now">
+                                <i class="fas fa-bullhorn me-1"></i>Trigger
+                            </button>
+                            {{ ab.action_button('toggle', 'toggle-on' if vog_message.enabled else 'toggle-off', '', 'Enable / disable', data_attrs={'vog-id': vog_message.id}, classes='toggle-vog-btn') }}
+                            <a href="{{ url_for('vog_edit', vog_id=vog_message.id) }}" class="btn action-btn action-btn-notext btn-outline-info" data-bs-toggle="tooltip" data-bs-title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            {{ ab.action_button('delete', 'trash', '', 'Delete', data_attrs={'vog-id': vog_message.id}, classes='delete-vog-btn') }}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', path='js/vog_list.js') }}"></script>
+{% endblock %}

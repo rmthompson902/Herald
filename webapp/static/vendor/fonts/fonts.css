@@ -1,0 +1,23 @@
+/* Inter Font - Local hosting replacement for Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* JetBrains Mono Font - Local hosting replacement for Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* 
+Note: These fonts are currently still using Google Fonts CDN.
+To fully localize, download the actual font files (.woff2) and replace the @import statements
+with @font-face declarations pointing to local files.
+
+For production deployment, consider downloading:
+- Inter font family (300, 400, 500, 600, 700 weights)
+- JetBrains Mono font family (400, 500 weights)
+
+Example of fully local font hosting:
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  src: url('./inter-regular.woff2') format('woff2');
+}
+*/

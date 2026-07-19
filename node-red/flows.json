@@ -11,7 +11,11 @@
     "type": "inject",
     "z": "tab1",
     "name": "Startup",
-    "props": [{ "p": "payload" }],
+    "props": [
+      {
+        "p": "payload"
+      }
+    ],
     "repeat": "",
     "crontab": "",
     "once": true,
@@ -21,7 +25,11 @@
     "payloadType": "date",
     "x": 150,
     "y": 120,
-    "wires": [["fn_startup"]]
+    "wires": [
+      [
+        "fn_startup"
+      ]
+    ]
   },
   {
     "id": "fn_startup",
@@ -37,7 +45,11 @@
     "libs": [],
     "x": 400,
     "y": 120,
-    "wires": [["cronplus1"]]
+    "wires": [
+      [
+        "cronplus1"
+      ]
+    ]
   },
   {
     "id": "cronplus1",
@@ -55,7 +67,11 @@
     "options": [],
     "x": 650,
     "y": 220,
-    "wires": [["fn_on_due"]]
+    "wires": [
+      [
+        "fn_on_due"
+      ]
+    ]
   },
   {
     "id": "fn_on_due",
@@ -71,7 +87,11 @@
     "libs": [],
     "x": 700,
     "y": 320,
-    "wires": [["debug1"]]
+    "wires": [
+      [
+        "debug1"
+      ]
+    ]
   },
   {
     "id": "debug1",
@@ -90,9 +110,13 @@
     "y": 320,
     "wires": []
   },
-
-  { "id": "tab_api", "type": "tab", "label": "Internal API", "disabled": false, "info": "Internal JSON API for the FastAPI webapp (webapp/). Bound to 127.0.0.1 via settings.js uiHost - never exposed to the LAN. Each endpoint is a tight http-in -> function -> http-response chain." },
-
+  {
+    "id": "tab_api",
+    "type": "tab",
+    "label": "Internal API",
+    "disabled": false,
+    "info": "Internal JSON API for the FastAPI webapp (webapp/). Bound to 127.0.0.1 via settings.js uiHost - never exposed to the LAN. Each endpoint is a tight http-in -> function -> http-response chain."
+  },
   {
     "id": "httpin_create_schedule",
     "type": "http in",
@@ -104,7 +128,11 @@
     "swaggerDoc": "",
     "x": 160,
     "y": 80,
-    "wires": [["fn_create_schedule"]]
+    "wires": [
+      [
+        "fn_create_schedule"
+      ]
+    ]
   },
   {
     "id": "fn_create_schedule",
@@ -120,7 +148,14 @@
     "libs": [],
     "x": 420,
     "y": 80,
-    "wires": [["cronplus1"], ["httpresp_create_schedule"]]
+    "wires": [
+      [
+        "cronplus1"
+      ],
+      [
+        "httpresp_create_schedule"
+      ]
+    ]
   },
   {
     "id": "httpresp_create_schedule",
@@ -133,7 +168,6 @@
     "y": 100,
     "wires": []
   },
-
   {
     "id": "httpin_update_schedule",
     "type": "http in",
@@ -145,7 +179,11 @@
     "swaggerDoc": "",
     "x": 165,
     "y": 160,
-    "wires": [["fn_update_schedule"]]
+    "wires": [
+      [
+        "fn_update_schedule"
+      ]
+    ]
   },
   {
     "id": "fn_update_schedule",
@@ -161,7 +199,14 @@
     "libs": [],
     "x": 425,
     "y": 160,
-    "wires": [["cronplus1"], ["httpresp_update_schedule"]]
+    "wires": [
+      [
+        "cronplus1"
+      ],
+      [
+        "httpresp_update_schedule"
+      ]
+    ]
   },
   {
     "id": "httpresp_update_schedule",
@@ -174,7 +219,6 @@
     "y": 180,
     "wires": []
   },
-
   {
     "id": "httpin_delete_schedule",
     "type": "http in",
@@ -186,7 +230,11 @@
     "swaggerDoc": "",
     "x": 170,
     "y": 240,
-    "wires": [["fn_delete_schedule"]]
+    "wires": [
+      [
+        "fn_delete_schedule"
+      ]
+    ]
   },
   {
     "id": "fn_delete_schedule",
@@ -202,7 +250,14 @@
     "libs": [],
     "x": 430,
     "y": 240,
-    "wires": [["cronplus1"], ["httpresp_delete_schedule"]]
+    "wires": [
+      [
+        "cronplus1"
+      ],
+      [
+        "httpresp_delete_schedule"
+      ]
+    ]
   },
   {
     "id": "httpresp_delete_schedule",
@@ -215,7 +270,6 @@
     "y": 260,
     "wires": []
   },
-
   {
     "id": "httpin_toggle_schedule",
     "type": "http in",
@@ -227,14 +281,18 @@
     "swaggerDoc": "",
     "x": 185,
     "y": 320,
-    "wires": [["fn_toggle_schedule"]]
+    "wires": [
+      [
+        "fn_toggle_schedule"
+      ]
+    ]
   },
   {
     "id": "fn_toggle_schedule",
     "type": "function",
     "z": "tab_api",
     "name": "setEnabled -> syncOne",
-    "func": "const core = global.get('core');\nconst cronSyncMessages = global.get('cronSyncMessages');\nconst id = Number(msg.req.params.id);\nconst enabled = !!(msg.payload && msg.payload.enabled);\n\nconst schedule = core.db.schedules.setEnabled(core.db.connection, id, enabled);\nif (!schedule) {\n    msg.statusCode = 404;\n    msg.payload = { status: 'error', message: `Schedule ${id} not found` };\n    return [null, msg];\n}\n\nconst directives = core.scheduling.cronSync.syncOne(core.db.connection, id);\nconst cronMsgs = cronSyncMessages.toCronPlusMessages(directives);\n\nmsg.statusCode = 200;\nmsg.payload = { status: 'success', schedule };\nreturn [cronMsgs, msg];",
+    "func": "const core = global.get('core');\nconst cronSyncMessages = global.get('cronSyncMessages');\nconst id = Number(msg.req.params.id);\n\nconst existing = core.db.schedules.getById(core.db.connection, id);\nif (!existing) {\n    msg.statusCode = 404;\n    msg.payload = { status: 'error', message: `Schedule ${id} not found` };\n    return [null, msg];\n}\n\nconst schedule = core.db.schedules.setEnabled(core.db.connection, id, !existing.enabled);\n\nconst directives = core.scheduling.cronSync.syncOne(core.db.connection, id);\nconst cronMsgs = cronSyncMessages.toCronPlusMessages(directives);\n\nmsg.statusCode = 200;\nmsg.payload = { status: 'success', schedule };\nreturn [cronMsgs, msg];",
     "outputs": 2,
     "timeout": 0,
     "noerr": 0,
@@ -243,7 +301,14 @@
     "libs": [],
     "x": 440,
     "y": 320,
-    "wires": [["cronplus1"], ["httpresp_toggle_schedule"]]
+    "wires": [
+      [
+        "cronplus1"
+      ],
+      [
+        "httpresp_toggle_schedule"
+      ]
+    ]
   },
   {
     "id": "httpresp_toggle_schedule",
@@ -256,7 +321,6 @@
     "y": 340,
     "wires": []
   },
-
   {
     "id": "httpin_next_occurrences",
     "type": "http in",
@@ -268,7 +332,11 @@
     "swaggerDoc": "",
     "x": 190,
     "y": 400,
-    "wires": [["fn_next_occurrences"]]
+    "wires": [
+      [
+        "fn_next_occurrences"
+      ]
+    ]
   },
   {
     "id": "fn_next_occurrences",
@@ -284,7 +352,11 @@
     "libs": [],
     "x": 470,
     "y": 400,
-    "wires": [["httpresp_next_occurrences"]]
+    "wires": [
+      [
+        "httpresp_next_occurrences"
+      ]
+    ]
   },
   {
     "id": "httpresp_next_occurrences",
@@ -297,7 +369,6 @@
     "y": 400,
     "wires": []
   },
-
   {
     "id": "httpin_create_vog",
     "type": "http in",
@@ -309,7 +380,11 @@
     "swaggerDoc": "",
     "x": 165,
     "y": 480,
-    "wires": [["fn_create_vog"]]
+    "wires": [
+      [
+        "fn_create_vog"
+      ]
+    ]
   },
   {
     "id": "fn_create_vog",
@@ -325,7 +400,11 @@
     "libs": [],
     "x": 400,
     "y": 480,
-    "wires": [["httpresp_create_vog"]]
+    "wires": [
+      [
+        "httpresp_create_vog"
+      ]
+    ]
   },
   {
     "id": "httpresp_create_vog",
@@ -338,7 +417,6 @@
     "y": 480,
     "wires": []
   },
-
   {
     "id": "httpin_update_vog",
     "type": "http in",
@@ -350,7 +428,11 @@
     "swaggerDoc": "",
     "x": 170,
     "y": 560,
-    "wires": [["fn_update_vog"]]
+    "wires": [
+      [
+        "fn_update_vog"
+      ]
+    ]
   },
   {
     "id": "fn_update_vog",
@@ -366,7 +448,11 @@
     "libs": [],
     "x": 405,
     "y": 560,
-    "wires": [["httpresp_update_vog"]]
+    "wires": [
+      [
+        "httpresp_update_vog"
+      ]
+    ]
   },
   {
     "id": "httpresp_update_vog",
@@ -379,7 +465,6 @@
     "y": 560,
     "wires": []
   },
-
   {
     "id": "httpin_delete_vog",
     "type": "http in",
@@ -391,7 +476,11 @@
     "swaggerDoc": "",
     "x": 175,
     "y": 640,
-    "wires": [["fn_delete_vog"]]
+    "wires": [
+      [
+        "fn_delete_vog"
+      ]
+    ]
   },
   {
     "id": "fn_delete_vog",
@@ -407,7 +496,11 @@
     "libs": [],
     "x": 410,
     "y": 640,
-    "wires": [["httpresp_delete_vog"]]
+    "wires": [
+      [
+        "httpresp_delete_vog"
+      ]
+    ]
   },
   {
     "id": "httpresp_delete_vog",
@@ -420,7 +513,6 @@
     "y": 640,
     "wires": []
   },
-
   {
     "id": "httpin_toggle_vog",
     "type": "http in",
@@ -432,14 +524,18 @@
     "swaggerDoc": "",
     "x": 195,
     "y": 720,
-    "wires": [["fn_toggle_vog"]]
+    "wires": [
+      [
+        "fn_toggle_vog"
+      ]
+    ]
   },
   {
     "id": "fn_toggle_vog",
     "type": "function",
     "z": "tab_api",
     "name": "setEnabled VOG message",
-    "func": "const core = global.get('core');\nconst id = Number(msg.req.params.id);\nconst enabled = !!(msg.payload && msg.payload.enabled);\n\nconst vogMessage = core.db.vogMessages.setEnabled(core.db.connection, id, enabled);\nif (!vogMessage) {\n    msg.statusCode = 404;\n    msg.payload = { status: 'error', message: `VOG message ${id} not found` };\n    return msg;\n}\n\nmsg.statusCode = 200;\nmsg.payload = { status: 'success', vogMessage };\nreturn msg;",
+    "func": "const core = global.get('core');\nconst id = Number(msg.req.params.id);\n\nconst existing = core.db.vogMessages.getById(core.db.connection, id);\nif (!existing) {\n    msg.statusCode = 404;\n    msg.payload = { status: 'error', message: `VOG message ${id} not found` };\n    return msg;\n}\n\nconst vogMessage = core.db.vogMessages.setEnabled(core.db.connection, id, !existing.enabled);\n\nmsg.statusCode = 200;\nmsg.payload = { status: 'success', vogMessage };\nreturn msg;",
     "outputs": 1,
     "timeout": 0,
     "noerr": 0,
@@ -448,7 +544,11 @@
     "libs": [],
     "x": 440,
     "y": 720,
-    "wires": [["httpresp_toggle_vog"]]
+    "wires": [
+      [
+        "httpresp_toggle_vog"
+      ]
+    ]
   },
   {
     "id": "httpresp_toggle_vog",
@@ -461,7 +561,6 @@
     "y": 720,
     "wires": []
   },
-
   {
     "id": "httpin_trigger_vog",
     "type": "http in",
@@ -473,7 +572,11 @@
     "swaggerDoc": "",
     "x": 190,
     "y": 800,
-    "wires": [["fn_trigger_vog"]]
+    "wires": [
+      [
+        "fn_trigger_vog"
+      ]
+    ]
   },
   {
     "id": "fn_trigger_vog",
@@ -489,7 +592,11 @@
     "libs": [],
     "x": 435,
     "y": 800,
-    "wires": [["httpresp_trigger_vog"]]
+    "wires": [
+      [
+        "httpresp_trigger_vog"
+      ]
+    ]
   },
   {
     "id": "httpresp_trigger_vog",
@@ -502,7 +609,6 @@
     "y": 800,
     "wires": []
   },
-
   {
     "id": "httpin_cues",
     "type": "http in",
@@ -514,7 +620,11 @@
     "swaggerDoc": "",
     "x": 150,
     "y": 880,
-    "wires": [["fn_cues"]]
+    "wires": [
+      [
+        "fn_cues"
+      ]
+    ]
   },
   {
     "id": "fn_cues",
@@ -530,7 +640,11 @@
     "libs": [],
     "x": 390,
     "y": 880,
-    "wires": [["httpresp_cues"]]
+    "wires": [
+      [
+        "httpresp_cues"
+      ]
+    ]
   },
   {
     "id": "httpresp_cues",
@@ -543,7 +657,6 @@
     "y": 880,
     "wires": []
   },
-
   {
     "id": "httpin_play_now",
     "type": "http in",
@@ -555,7 +668,11 @@
     "swaggerDoc": "",
     "x": 190,
     "y": 960,
-    "wires": [["fn_play_now"]]
+    "wires": [
+      [
+        "fn_play_now"
+      ]
+    ]
   },
   {
     "id": "fn_play_now",
@@ -571,7 +688,11 @@
     "libs": [],
     "x": 440,
     "y": 960,
-    "wires": [["httpresp_play_now"]]
+    "wires": [
+      [
+        "httpresp_play_now"
+      ]
+    ]
   },
   {
     "id": "httpresp_play_now",
@@ -584,7 +705,6 @@
     "y": 960,
     "wires": []
   },
-
   {
     "id": "httpin_health",
     "type": "http in",
@@ -596,7 +716,11 @@
     "swaggerDoc": "",
     "x": 160,
     "y": 1040,
-    "wires": [["fn_health"]]
+    "wires": [
+      [
+        "fn_health"
+      ]
+    ]
   },
   {
     "id": "fn_health",
@@ -612,7 +736,11 @@
     "libs": [],
     "x": 400,
     "y": 1040,
-    "wires": [["httpresp_health"]]
+    "wires": [
+      [
+        "httpresp_health"
+      ]
+    ]
   },
   {
     "id": "httpresp_health",

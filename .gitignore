@@ -1,5 +1,10 @@
 node_modules/
 
+webapp/.venv/
+webapp/__pycache__/
+webapp/**/__pycache__/
+webapp/.env
+
 data/
 
 logs/
