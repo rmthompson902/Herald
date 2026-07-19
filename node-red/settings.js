@@ -2,6 +2,7 @@
 
 const path = require('path');
 const { createCore } = require('../lib/index');
+const cronSyncMessages = require('./lib/applyCronSyncDirectives');
 
 const core = createCore({
   dbPath: process.env.DB_PATH || path.join(__dirname, '..', 'data', 'schedule.db'),
@@ -12,13 +13,18 @@ const core = createCore({
 });
 
 module.exports = {
-  uiPort: Number(process.env.DASHBOARD_PORT || 1880),
+  uiPort: Number(process.env.NODE_RED_API_PORT || process.env.DASHBOARD_PORT || 1880),
+  // Headless: no dashboard UI lives here anymore (see Frontend Pivot in the plan). This is
+  // now an internal API only the co-located FastAPI app calls - never expose it to the LAN.
+  uiHost: '127.0.0.1',
   flowFile: 'flows.json',
 
-  // No dashboard/editor auth - access is gated entirely by KVM + a locked-down LAN/
-  // firewall perimeter on the deployed machine (confirmed decision, see docs/claude-plan.md).
+  // No auth anywhere - access is gated entirely by KVM + a locked-down LAN/firewall
+  // perimeter on the deployed machine, plus this API being loopback-only (confirmed
+  // decisions, see docs/claude-plan.md).
   functionGlobalContext: {
-    core
+    core,
+    cronSyncMessages
   },
 
   logging: {

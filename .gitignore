@@ -8,6 +8,8 @@ logs/
 .DS_Store
 .env
 
+_old/
+
 node-red/flows_cred.json
 node-red/.config.*.json
 node-red/.flows.json.backup

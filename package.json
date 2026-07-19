@@ -10,7 +10,6 @@
     "node-red": "node-red --userDir ./node-red"
   },
   "dependencies": {
-    "@flowfuse/node-red-dashboard": "1.30.2",
     "better-sqlite3": "12.11.1",
     "node-red": "5.0.1",
     "node-red-contrib-cron-plus": "2.2.4",
