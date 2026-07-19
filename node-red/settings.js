@@ -3,6 +3,7 @@
 const path = require('path');
 const { createCore } = require('../lib/index');
 const cronSyncMessages = require('./lib/applyCronSyncDirectives');
+const { refreshCueCache } = require('./lib/refreshCueCache');
 
 const core = createCore({
   dbPath: process.env.DB_PATH || path.join(__dirname, '..', 'data', 'schedule.db'),
@@ -24,7 +25,8 @@ module.exports = {
   // decisions, see docs/claude-plan.md).
   functionGlobalContext: {
     core,
-    cronSyncMessages
+    cronSyncMessages,
+    refreshCueCache
   },
 
   logging: {
