@@ -1,0 +1,12 @@
+{
+  "description": "cue 101, deliberately adjusted: main level -6dB, input ch1 level 0dB, input ch2 level muted (-60), crosspoint ch1->out1 -2dB, crosspoint ch2->out2 -4dB. Captured 2026-07-19 against real QLab 5.6.2. Output channel 2 must resolve as NOT in the zone set despite its crosspoint being audible (-4dB), because input channel 2's own fader gates it shut at -60.",
+  "matrix": [
+    [-6.0000004906757844, 0, -60],
+    [0, -2.0000002404171053, -60],
+    [0, -60, -3.9999997170243584]
+  ],
+  "expectedZonesByOutputChannel": {
+    "1": true,
+    "2": false
+  }
+}

@@ -1,0 +1,16 @@
+node_modules/
+
+data/
+
+logs/
+*.log
+
+.DS_Store
+
+node-red/flows_cred.json
+node-red/.config.*.json
+node-red/.flows.json.backup
+
+media/*
+!media/00 qlab workspaces/
+!media/00 qlab workspaces/**

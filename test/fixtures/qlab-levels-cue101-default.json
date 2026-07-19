@@ -1,0 +1,12 @@
+{
+  "description": "cue 101, default/untouched stereo pan on a 2-channel dev output device — no input-fader muting, straight 0dB crosspoint pass-through. Captured 2026-07-19 against real QLab 5.6.2.",
+  "matrix": [
+    [0, 0, 0],
+    [0, 0, -60],
+    [0, -60, 0]
+  ],
+  "expectedZonesByOutputChannel": {
+    "1": true,
+    "2": true
+  }
+}

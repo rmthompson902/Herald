@@ -1,0 +1,20 @@
+{
+  "name": "sitewide-audio-messaging",
+  "version": "0.1.0",
+  "private": true,
+  "description": "QLab scheduled audio messaging system: Node-RED + cron-plus + SQLite + OSC scheduling layer for QLab.",
+  "main": "lib/index.js",
+  "scripts": {
+    "test": "jest",
+    "spike:qlab": "node scripts/phase0-qlab-spike.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "12.11.1",
+    "osc": "2.4.5",
+    "winston": "3.19.0",
+    "winston-daily-rotate-file": "5.0.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+}
