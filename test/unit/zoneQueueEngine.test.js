@@ -371,6 +371,40 @@ describe('ZoneQueueEngine', () => {
     expect(protocol.playCue).not.toHaveBeenCalledWith('waiting');
   });
 
+  it('does not fire an entry whose zone was preempted while its confirm-before-fire check was still in flight', async () => {
+    // Real race caught via live testing: an entry can be reserved into a zone (settle
+    // window closed, confirm-retry chain started) a moment before a VOG trigger's
+    // preemptZones() reclaims that same zone. Without this guard the reserved entry's
+    // confirm chain completes obliviously and fires anyway, into a zone VOG just claimed.
+    const protocol = fakeProtocol();
+    let resolveIsRunning;
+    protocol.getIsRunningByUniqueId.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveIsRunning = resolve;
+      })
+    );
+    const onEvent = jest.fn();
+    const engine = makeEngine(protocol, { onEvent });
+
+    const promise = engine.enqueue(entry('a', ['Zone 1'], { qlabInternalId: 'uid-a' }));
+
+    // 'a' is now reserved into Zone 1 and mid-confirm (awaiting the still-pending
+    // getIsRunningByUniqueId call above) - a VOG trigger preempts the zone right now.
+    engine.preemptZones(['Zone 1']);
+
+    resolveIsRunning(false); // let the now-stale confirm chain resolve
+    const result = await promise;
+
+    expect(result.fired).toBe(false);
+    expect(protocol.playCue).not.toHaveBeenCalledWith('a');
+    expect(onEvent).toHaveBeenCalledWith('preempted_before_fire', expect.objectContaining({ id: 'a' }), undefined);
+
+    // Zone 1 is genuinely free again afterward - not left stuck occupied by the aborted entry.
+    const laterResult = await engine.enqueue(entry('b', ['Zone 1'], { dueAt: 1 }));
+    expect(laterResult.fired).toBe(true);
+    expect(protocol.playCue).toHaveBeenCalledWith('b');
+  });
+
   it('fires immediately for a cue resolving to zero zones, without tracking any occupancy', async () => {
     const protocol = fakeProtocol();
     const engine = makeEngine(protocol);
