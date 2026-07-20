@@ -17,7 +17,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.node_red_client import NodeRedUnavailableError, node_red_client
-from app.routers import cues_api, pages, schedules_api, status_api, vog_api
+from app.routers import cues_api, history_api, pages, schedules_api, status_api, vog_api
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 
@@ -30,6 +30,7 @@ app.include_router(schedules_api.router)
 app.include_router(vog_api.router)
 app.include_router(cues_api.router)
 app.include_router(status_api.router)
+app.include_router(history_api.router)
 
 # SocketIO relay: the browser only ever talks to this server, never to
 # Node-RED directly. Mounted at /socket.io, which is the client library's

@@ -261,3 +261,13 @@ class StatusAPI extends APIClient {
         return this.get('/api/status');
     }
 }
+
+/**
+ * Event history API operations
+ */
+class HistoryAPI extends APIClient {
+    /** @returns {Promise} - { entries: string[] }, most recent 200 lines, newest first */
+    static async getRecentEntries() {
+        return this.get('/api/history/entries');
+    }
+}

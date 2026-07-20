@@ -2,8 +2,13 @@
 
 const path = require('path');
 const { createCore } = require('../lib/index');
+const { createEventLogger } = require('../lib/log/eventLogger');
 const cronSyncMessages = require('./lib/applyCronSyncDirectives');
 const { refreshCueCache, refreshAllReferencedCues } = require('./lib/refreshCueCache');
+
+// Daily-rotating, 30-day-retained plain-text business event log (see plan's Logging
+// section) - this is what the webapp's /history page tails directly.
+const eventLogger = createEventLogger(path.join(__dirname, '..', 'logs'));
 
 const core = createCore({
   dbPath: process.env.DB_PATH || path.join(__dirname, '..', 'data', 'schedule.db'),
@@ -11,15 +16,13 @@ const core = createCore({
   qlabOscHost: process.env.QLAB_OSC_HOST || '127.0.0.1',
   qlabOscPort: Number(process.env.QLAB_OSC_PORT || 53000),
   localOscPort: Number(process.env.LOCAL_OSC_PORT || 53001),
-  // zoneQueueEngine had no logging at all until a real bug (a queued entry silently never
-  // firing) was only discoverable by listening for audio - see docs/adr/0001. Replace with
-  // lib/log/eventLogger.js once that lands instead of this bare console.log; the engine
-  // also keeps its own short-lived recent-events buffer regardless (see getRecentEvents,
-  // exposed via GET /api/queue/events), which is what the webapp polls for notifications.
-  onQueueEvent: (event, entry, extra) => {
-    console.log(`[queue] ${event} id=${entry.id} cue=${entry.cueNumber} zones=${JSON.stringify(entry.zones)}${extra ? ' ' + JSON.stringify(extra) : ''}`);
-  }
+  onQueueEvent: eventLogger.logQueueEvent
 });
+
+// healthMonitor emits 'stateChange' on every real transition (see lib/health/healthMonitor.js) -
+// log each one so a disconnect/reconnect shows up in the same operator-facing history the
+// queue events do, not just in Node-RED's own console.
+core.health.on('stateChange', ({ from, to }) => eventLogger.logHealthTransition(from, to));
 
 module.exports = {
   uiPort: Number(process.env.NODE_RED_API_PORT || process.env.DASHBOARD_PORT || 1880),

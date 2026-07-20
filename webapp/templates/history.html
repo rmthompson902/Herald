@@ -5,17 +5,25 @@
 {% block title %}Event History - Sitewide Audio Messaging{% endblock %}
 
 {% block content %}
-{{ ph.page_header('Event History', 'Most recent 200 lines from today\'s event log.', [], [], 'fas fa-list') }}
+{{ ph.page_header('Event History', 'Most recent 200 lines from today\'s event log. Refreshes automatically.', [
+    {'type': 'button', 'id': 'refreshLogBtn', 'text': 'Refresh Log Entries', 'icon': 'fas fa-sync-alt', 'class': 'btn-outline-secondary', 'tooltip': 'Reload the latest log entries now'}
+], [], 'fas fa-list', False) }}
 
-{% if not entries %}
-    {{ es.empty_state('list', 'No events logged yet', 'Fired, queued, and VOG events will show up here once the scheduling engine is logging (see lib/log/eventLogger.js).') }}
-{% else %}
-<div class="card">
-    <div class="card-body">
-        {% for line in entries %}
-        <div class="log-entry{% if 'vog' in line.lower() %} text-vog{% elif 'error' in line.lower() %} text-danger{% endif %}">{{ line.rstrip() }}</div>
-        {% endfor %}
+<div id="historyLogContainer">
+    {% if not entries %}
+        {{ es.empty_state('list', 'No events logged yet', 'Fired, queued, and VOG events will show up here once the scheduling engine is logging (see lib/log/eventLogger.js).') }}
+    {% else %}
+    <div class="card">
+        <div class="card-body">
+            {% for line in entries %}
+            <div class="log-entry{% if 'vog' in line.lower() %} text-vog{% elif 'error' in line.lower() %} text-danger{% endif %}">{{ line }}</div>
+            {% endfor %}
+        </div>
     </div>
+    {% endif %}
 </div>
-{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', path='js/history.js') }}"></script>
 {% endblock %}

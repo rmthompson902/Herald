@@ -5,13 +5,10 @@ through the JSON routers in schedules_api.py/vog_api.py, called from the
 browser via static/js/utils/api-client.js.
 """
 
-import glob
-import os
-
 from fastapi import APIRouter, Request
 
-from app.config import settings
 from app.db import queries
+from app.log_reader import read_recent_entries
 from app.node_red_client import NodeRedUnavailableError, node_red_client
 from app.templating import templates
 
@@ -77,12 +74,7 @@ async def vog_edit(request: Request, vog_id: int):
 
 @router.get("/history", name="history_page")
 async def history_page(request: Request):
-    log_files = sorted(glob.glob(os.path.join(settings.events_log_dir, "events-*.log")), reverse=True)
-    entries: list[str] = []
-    if log_files:
-        with open(log_files[0], "r", encoding="utf-8") as handle:
-            entries = handle.readlines()[-200:]
-            entries.reverse()
+    entries = read_recent_entries()
     return templates.TemplateResponse(request, "history.html", {"entries": entries})
 
 

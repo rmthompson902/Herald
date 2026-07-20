@@ -1,5 +1,5 @@
 {# Page header component - consistent page headers #}
-{% macro page_header(title, subtitle='', actions=[], breadcrumbs=[], icon='') %}
+{% macro page_header(title, subtitle='', actions=[], breadcrumbs=[], icon='', show_refresh_cues=True) %}
 <div class="page-header mb-4">
     {% if breadcrumbs %}
     <nav aria-label="breadcrumb">
@@ -32,11 +32,13 @@
         </div>
 
         <div class="d-flex gap-2">
+            {% if show_refresh_cues %}
             <button type="button" class="btn btn-outline-secondary" id="refreshCuesBtn"
                     data-bs-toggle="tooltip" data-bs-placement="bottom"
                     data-bs-title="Re-read every referenced cue's duration and zones from QLab">
                 <i class="fas fa-sync-alt me-1"></i>Refresh Cue Data
             </button>
+            {% endif %}
             {% for action in actions %}
                 {% if action.type == 'button' %}
                     <button type="button"
