@@ -88,5 +88,9 @@ class NodeRedClient:
     async def get_health(self) -> dict:
         return await self._request("GET", "/health")
 
+    async def get_queue_events(self, since: Optional[str] = None) -> dict:
+        params = {"since": since} if since else None
+        return await self._request("GET", "/queue/events", params=params)
+
 
 node_red_client = NodeRedClient()

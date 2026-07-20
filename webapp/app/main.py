@@ -39,6 +39,8 @@ app.mount("/socket.io", socketio.ASGIApp(sio))
 
 _last_health: dict | None = None
 _poll_task: asyncio.Task | None = None
+_queue_events_poll_task: asyncio.Task | None = None
+_last_queue_event_at: str | None = None
 
 
 async def _poll_and_broadcast_health() -> None:
@@ -60,15 +62,47 @@ async def _poll_and_broadcast_health() -> None:
         await asyncio.sleep(settings.health_poll_interval_seconds)
 
 
+async def _poll_and_broadcast_queue_events() -> None:
+    """A queued play-now/schedule fire reports 'queued' in its own HTTP response, but the
+    actual fire can happen well after that response already went out - the operator would
+    otherwise never learn whether it actually played. Polls zoneQueueEngine's recent-events
+    buffer (GET /api/queue/events) and pushes a toast for any 'fired' event flagged
+    afterQueue=true (see lib/queue/zoneQueueEngine.js), i.e. specifically the delayed-fire
+    case, not every routine on-time schedule tick."""
+    global _last_queue_event_at
+    while True:
+        try:
+            result = await node_red_client.get_queue_events(_last_queue_event_at)
+            events = result.get("events", []) if result.get("status") == "success" else []
+        except NodeRedUnavailableError:
+            events = []
+
+        for event in events:
+            _last_queue_event_at = event["at"]
+            if event["event"] == "fired" and (event.get("extra") or {}).get("afterQueue"):
+                entry = event["entry"]
+                await sio.emit(
+                    "queue_notification",
+                    {
+                        "message": f"{entry.get('name') or entry['cueNumber']} is now playing "
+                        f"(cue {entry['cueNumber']}) - it was waiting for the zone to clear",
+                    },
+                )
+
+        await asyncio.sleep(settings.health_poll_interval_seconds)
+
+
 @app.on_event("startup")
 async def start_health_poller() -> None:
-    global _poll_task
+    global _poll_task, _queue_events_poll_task
     _poll_task = asyncio.create_task(_poll_and_broadcast_health())
+    _queue_events_poll_task = asyncio.create_task(_poll_and_broadcast_queue_events())
 
 
 @app.on_event("shutdown")
 async def stop_health_poller() -> None:
-    if _poll_task is not None:
-        _poll_task.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
-            await _poll_task
+    for task in (_poll_task, _queue_events_poll_task):
+        if task is not None:
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await task

@@ -10,7 +10,15 @@ const core = createCore({
   zoneMapPath: path.join(__dirname, '..', 'config', 'zone-map.json'),
   qlabOscHost: process.env.QLAB_OSC_HOST || '127.0.0.1',
   qlabOscPort: Number(process.env.QLAB_OSC_PORT || 53000),
-  localOscPort: Number(process.env.LOCAL_OSC_PORT || 53001)
+  localOscPort: Number(process.env.LOCAL_OSC_PORT || 53001),
+  // zoneQueueEngine had no logging at all until a real bug (a queued entry silently never
+  // firing) was only discoverable by listening for audio - see docs/adr/0001. Replace with
+  // lib/log/eventLogger.js once that lands instead of this bare console.log; the engine
+  // also keeps its own short-lived recent-events buffer regardless (see getRecentEvents,
+  // exposed via GET /api/queue/events), which is what the webapp polls for notifications.
+  onQueueEvent: (event, entry, extra) => {
+    console.log(`[queue] ${event} id=${entry.id} cue=${entry.cueNumber} zones=${JSON.stringify(entry.zones)}${extra ? ' ' + JSON.stringify(extra) : ''}`);
+  }
 });
 
 module.exports = {

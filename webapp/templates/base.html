@@ -92,6 +92,14 @@ Block areas for child templates: title, additional_css, content, scripts
             showToast('Connection Error', data.message, 'error');
         });
 
+        // A play-now/schedule fire that reported "queued" earlier can go on to actually
+        // play well after that response returned - this follow-up toast is how the
+        // operator learns it did (or didn't get stuck). Page-agnostic since it can arrive
+        // while the operator is anywhere in the app, not just the page that queued it.
+        socket.on('queue_notification', (data) => {
+            showToast('Queued Message Played', data.message, 'info');
+        });
+
         /**
          * Global toast notification system, consistent across every page.
          * @param {string} title

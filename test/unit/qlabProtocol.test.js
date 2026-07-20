@@ -40,6 +40,15 @@ describe('QlabProtocol', () => {
     expect(client.request).not.toHaveBeenCalled();
   });
 
+  it('getIsRunningByUniqueId queries by cue_id, not cue number', async () => {
+    const client = fakeClient();
+    client.request.mockResolvedValue(true);
+    const protocol = new QlabProtocol(client);
+
+    await expect(protocol.getIsRunningByUniqueId('780D5905-28E3-47D3-9718-7D668C957415')).resolves.toBe(true);
+    expect(client.request).toHaveBeenCalledWith('/cue_id/780D5905-28E3-47D3-9718-7D668C957415/isRunning');
+  });
+
   it('keepAlive is fire-and-forget (uses send, not request)', () => {
     const client = fakeClient();
     const protocol = new QlabProtocol(client);

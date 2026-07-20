@@ -77,8 +77,8 @@
     "id": "fn_on_due",
     "type": "function",
     "z": "tab1",
-    "name": "On schedule due -> playCue",
-    "func": "const core = global.get('core');\n\nif (!msg.topic || !msg.topic.startsWith('sched-')) {\n    // command-response / status messages from cron-plus itself, not a fire event - ignore\n    return null;\n}\n\nconst scheduleId = Number(msg.topic.replace('sched-', ''));\nconst schedule = core.db.schedules.getById(core.db.connection, scheduleId);\n\nif (!schedule) {\n    node.warn(`No schedule found in DB for ${msg.topic} (deleted since being scheduled?)`);\n    return null;\n}\n\nif (!core.health.isArmed()) {\n    node.warn(`Skipping ${schedule.qlabCueNumber}: QLab not confirmed live (health state: ${core.health.getState()})`);\n    return null;\n}\n\nreturn (async () => {\n    await core.osc.protocol.playCue(schedule.qlabCueNumber);\n    return { payload: `Played ${schedule.qlabCueNumber} (schedule ${scheduleId}: ${schedule.name})` };\n})();",
+    "name": "On schedule due -> zoneQueueEngine.enqueue",
+    "func": "const core = global.get('core');\nconst refreshCueCache = global.get('refreshCueCache');\n\nif (!msg.topic || !msg.topic.startsWith('sched-')) {\n    // command-response / status messages from cron-plus itself, not a fire event - ignore\n    return null;\n}\n\nconst scheduleId = Number(msg.topic.replace('sched-', ''));\nconst schedule = core.db.schedules.getById(core.db.connection, scheduleId);\n\nif (!schedule) {\n    node.warn(`No schedule found in DB for ${msg.topic} (deleted since being scheduled?)`);\n    return null;\n}\n\nif (!core.health.isArmed()) {\n    node.warn(`Skipping ${schedule.qlabCueNumber}: QLab not confirmed live (health state: ${core.health.getState()})`);\n    return null;\n}\n\nreturn (async () => {\n    // Live-resolve zones/duration (also refreshes cue_cache as a side effect) rather than\n    // trusting a possibly-stale cache entry for a collision decision.\n    const cue = await refreshCueCache(core, schedule.qlabCueNumber);\n    if (cue.error) {\n        node.warn(`Skipping ${schedule.qlabCueNumber}: failed to resolve zones/duration live (${cue.error})`);\n        return null;\n    }\n\n    const { fired } = await core.queue.enqueue({\n        id: `sched-${scheduleId}-${Date.now()}`,\n        dedupeKey: `schedule-${scheduleId}`,\n        scheduleId,\n        cueNumber: schedule.qlabCueNumber,\n        qlabInternalId: cue.qlabInternalId,\n        zones: cue.zones,\n        durationSeconds: cue.durationSeconds,\n        dueAt: Date.now(),\n        name: schedule.name\n    });\n\n    return { payload: `${fired ? 'Fired' : 'Queued'} ${schedule.qlabCueNumber} (schedule ${scheduleId}: ${schedule.name})` };\n})();\n",
     "outputs": 1,
     "timeout": 0,
     "noerr": 0,
@@ -678,8 +678,8 @@
     "id": "fn_play_now",
     "type": "function",
     "z": "tab_api",
-    "name": "play-now (interim stub)",
-    "func": "const core = global.get('core');\nconst id = Number(msg.req.params.id);\n\nconst schedule = core.db.schedules.getById(core.db.connection, id);\nif (!schedule) {\n    msg.statusCode = 404;\n    msg.payload = { status: 'error', message: `Schedule ${id} not found` };\n    return msg;\n}\n\nif (!core.health.isArmed()) {\n    msg.statusCode = 503;\n    msg.payload = { status: 'error', message: 'qlab_disconnected' };\n    return msg;\n}\n\n// Interim stub: direct playCue until zoneQueueEngine (Phase 8) lands - collision/wait\n// behavior isn't implemented yet. Contract is stable, internals upgrade in place.\nreturn (async () => {\n    await core.osc.protocol.playCue(schedule.qlabCueNumber);\n    msg.statusCode = 200;\n    msg.payload = { status: 'success', queued: false };\n    return msg;\n})();",
+    "name": "play-now (via zoneQueueEngine)",
+    "func": "const core = global.get('core');\nconst refreshCueCache = global.get('refreshCueCache');\nconst id = Number(msg.req.params.id);\n\nconst schedule = core.db.schedules.getById(core.db.connection, id);\nif (!schedule) {\n    msg.statusCode = 404;\n    msg.payload = { status: 'error', message: `Schedule ${id} not found` };\n    return msg;\n}\n\nif (!core.health.isArmed()) {\n    msg.statusCode = 503;\n    msg.payload = { status: 'error', message: 'qlab_disconnected' };\n    return msg;\n}\n\n// Goes through the exact same zoneQueueEngine as a real schedule fire - a UI convenience\n// button isn't allowed to be the one thing that can overlap audio (see plan / ADR 0001).\n// No dedupeKey: play-now never stale-drops anything and is never stale-dropped itself.\nreturn (async () => {\n    const cue = await refreshCueCache(core, schedule.qlabCueNumber);\n    if (cue.error) {\n        msg.statusCode = 502;\n        msg.payload = { status: 'error', message: `Could not resolve cue from QLab: ${cue.error}` };\n        return msg;\n    }\n\n    const { fired } = await core.queue.enqueue({\n        id: `playnow-${id}-${Date.now()}`,\n        scheduleId: id,\n        cueNumber: schedule.qlabCueNumber,\n        qlabInternalId: cue.qlabInternalId,\n        zones: cue.zones,\n        durationSeconds: cue.durationSeconds,\n        dueAt: Date.now(),\n        name: schedule.name\n    });\n\n    msg.statusCode = 200;\n    msg.payload = { status: 'success', queued: !fired };\n    return msg;\n})();\n",
     "outputs": 1,
     "timeout": 0,
     "noerr": 0,
@@ -842,6 +842,54 @@
     "headers": {},
     "x": 720,
     "y": 1200,
+    "wires": []
+  },
+  {
+    "id": "httpin_queue_events",
+    "type": "http in",
+    "z": "tab_api",
+    "name": "GET /api/queue/events",
+    "url": "/api/queue/events",
+    "method": "get",
+    "upload": false,
+    "swaggerDoc": "",
+    "x": 200,
+    "y": 1260,
+    "wires": [
+      [
+        "fn_queue_events"
+      ]
+    ]
+  },
+  {
+    "id": "fn_queue_events",
+    "type": "function",
+    "z": "tab_api",
+    "name": "recent queue events",
+    "func": "const core = global.get('core');\nconst since = msg.req.query.since || null;\n\nmsg.statusCode = 200;\nmsg.payload = { status: 'success', events: core.queue.getRecentEvents(since) };\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 460,
+    "y": 1260,
+    "wires": [
+      [
+        "httpresp_queue_events"
+      ]
+    ]
+  },
+  {
+    "id": "httpresp_queue_events",
+    "type": "http response",
+    "z": "tab_api",
+    "name": "",
+    "statusCode": "",
+    "headers": {},
+    "x": 720,
+    "y": 1260,
     "wires": []
   }
 ]
