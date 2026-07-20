@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.sitewide-audio-messaging.node-red</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/opt/homebrew/bin/node</string>
+        <string>/Users/ryanthompson/Documents/_dev/Sitewide-Audio-Messaging/node_modules/node-red/red.js</string>
+        <string>--userDir</string>
+        <string>/Users/ryanthompson/Documents/_dev/Sitewide-Audio-Messaging/node-red</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/ryanthompson/Documents/_dev/Sitewide-Audio-Messaging</string>
+
+    <!-- Runs as a per-user LaunchAgent (not a system LaunchDaemon) because QLab itself
+         only runs in a logged-in GUI session - a LaunchDaemon would start before anyone
+         logs in, with nothing for it to talk to yet. This starts alongside that same
+         login session instead. -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- Restart automatically if it ever exits/crashes, not just missing at login. -->
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/ryanthompson/Documents/_dev/Sitewide-Audio-Messaging/logs/launchd-node-red.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/ryanthompson/Documents/_dev/Sitewide-Audio-Messaging/logs/launchd-node-red-error.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <!-- launchd's default PATH is minimal (/usr/bin:/bin:/usr/sbin:/sbin) - node lives
+             under Homebrew's prefix, not there. -->
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+</dict>
+</plist>

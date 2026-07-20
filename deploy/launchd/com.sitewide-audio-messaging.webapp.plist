@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.sitewide-audio-messaging.webapp</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/ryanthompson/Documents/_dev/Sitewide-Audio-Messaging/webapp/.venv/bin/uvicorn</string>
+        <string>app.main:app</string>
+        <string>--app-dir</string>
+        <string>webapp</string>
+        <string>--host</string>
+        <string>127.0.0.1</string>
+        <string>--port</string>
+        <string>8000</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/ryanthompson/Documents/_dev/Sitewide-Audio-Messaging</string>
+
+    <!-- No ordering dependency on the node-red agent: the webapp degrades gracefully
+         (clean "Node-RED unreachable" state, not a crash) if it starts first or Node-RED
+         isn't up yet - see NodeRedUnavailableError handling throughout webapp/app/. -->
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/ryanthompson/Documents/_dev/Sitewide-Audio-Messaging/logs/launchd-webapp.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/ryanthompson/Documents/_dev/Sitewide-Audio-Messaging/logs/launchd-webapp-error.log</string>
+</dict>
+</plist>
