@@ -42,6 +42,65 @@ describe('ZoneQueueEngine', () => {
     expect(protocol.playCue).toHaveBeenCalledWith('a');
   });
 
+  it('frees the zone immediately on a failed/denied playCue, instead of holding it for the full duration', async () => {
+    const protocol = fakeProtocol();
+    protocol.playCue.mockRejectedValueOnce(new Error('QLab denied /cue/a/start: OSC control permissions off'));
+    const onEvent = jest.fn();
+    const engine = makeEngine(protocol, { onEvent });
+
+    const result = await engine.enqueue(entry('a', ['Zone 1'], { durationSeconds: 1000 }));
+    // Let the rejected playCue promise's .catch() run before asserting.
+    await jest.advanceTimersByTimeAsync(0);
+
+    expect(result.fired).toBe(true); // admission succeeded - the failure is in the OSC dispatch itself
+    expect(onEvent).toHaveBeenCalledWith('error', expect.objectContaining({ id: 'a' }), {
+      message: 'QLab denied /cue/a/start: OSC control permissions off'
+    });
+    expect(onEvent).toHaveBeenCalledWith('start_failed_zone_freed', expect.objectContaining({ id: 'a' }), {
+      zone: 'Zone 1'
+    });
+
+    // A later entry doesn't wait out the 1000s duration timer - the zone is free right away.
+    const laterResult = await engine.enqueue(entry('b', ['Zone 1'], { dueAt: 1 }));
+    expect(laterResult.fired).toBe(true);
+    expect(protocol.playCue).toHaveBeenCalledWith('b');
+  });
+
+  it('frees every zone of a multi-zone entry on a failed playCue, not just one', async () => {
+    const protocol = fakeProtocol();
+    protocol.playCue.mockRejectedValueOnce(new Error('denied'));
+    const engine = makeEngine(protocol);
+
+    await engine.enqueue(entry('a', ['Zone 1', 'Zone 2'], { durationSeconds: 1000 }));
+    await jest.advanceTimersByTimeAsync(0);
+
+    const laterResult = await engine.enqueue(entry('b', ['Zone 1', 'Zone 2'], { dueAt: 1 }));
+    expect(laterResult.fired).toBe(true);
+  });
+
+  it('does not double-free or throw if the zone was already reclaimed before the failed playCue resolves', async () => {
+    const protocol = fakeProtocol();
+    let rejectPlayCue;
+    protocol.playCue.mockReturnValueOnce(
+      new Promise((_resolve, reject) => {
+        rejectPlayCue = reject;
+      })
+    );
+    const onEvent = jest.fn();
+    const engine = makeEngine(protocol, { onEvent });
+
+    await engine.enqueue(entry('a', ['Zone 1'], { durationSeconds: 1000 }));
+
+    // VOG preempts the zone before the stalled playCue call ever resolves.
+    engine.preemptZones(['Zone 1']);
+    rejectPlayCue(new Error('denied'));
+    await jest.advanceTimersByTimeAsync(0);
+
+    // 'a' is no longer the zone's occupant, so the failed-start handler must not touch it -
+    // no crash, and it must not emit a bogus free for whatever (if anything) is there now.
+    expect(onEvent).not.toHaveBeenCalledWith('start_failed_zone_freed', expect.anything(), expect.anything());
+  });
+
   it('queues a second entry for an occupied zone and fires it once the first frees', async () => {
     const protocol = fakeProtocol();
     const onEvent = jest.fn();

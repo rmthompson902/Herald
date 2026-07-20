@@ -21,6 +21,20 @@ out.
    (`cue_cache`'s live-refreshed `durationSeconds`, falling back to 30s if unknown). The
    fallback timer is the safety net for a missed/ignored `/updates` push, not the primary
    mechanism.
+   - **A fourth way, added during the Phase 11 edge-case audit**: an immediate free if the
+     real OSC `/start` itself came back denied or otherwise failed (e.g. OSC control
+     permissions toggled off mid-session, or the cue was deleted/renamed in QLab between the
+     `cue_cache` refresh and this fire - a narrower race than "any bad cue number," since a
+     wholly nonexistent cue number fails `refreshCueCache` earlier and never reaches
+     `enqueue()` at all). Before this fix, `_fire()` claimed occupancy for the cue's full
+     assumed duration *before* even calling `playCue()`, and a rejection only logged an
+     `error` event - nothing freed the zone, so a denied start still held it hostage for the
+     rest of that window (bounded, never forever, but wasted: up to the 30s fallback, or the
+     cue's real cached duration otherwise) for a cue that never made a sound. Fixed by
+     freeing every one of the entry's zones immediately in the `playCue()` rejection handler,
+     tagged with a distinct `start_failed_zone_freed` event (rather than the normal
+     `zone_freed`) so the event log/history page can tell "burned its slot without playing"
+     apart from a normal completed playback.
 3. **Always confirm live before actually firing, never trust the timer alone** (added after
    a real bug: a schedule fire followed shortly by a play-now on the *same* cue - a very
    common real operator action - resulted in the queued play-now never audibly playing a
