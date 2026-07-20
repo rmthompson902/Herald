@@ -14,7 +14,9 @@ class CuePicker {
     constructor(input, menu, cues) {
         this.input = input;
         this.menu = menu;
-        this.cues = cues.filter((cue) => cue.number);
+        this.cues = cues
+            .filter((cue) => cue.number)
+            .sort((a, b) => a.number.localeCompare(b.number, undefined, { numeric: true, sensitivity: 'base' }));
         this.activeIndex = -1;
         this.matches = [];
 
