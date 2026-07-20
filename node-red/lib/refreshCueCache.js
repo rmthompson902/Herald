@@ -24,4 +24,20 @@ async function refreshCueCache(core, qlabCueNumber) {
   }
 }
 
-module.exports = { refreshCueCache };
+// Refreshes every cue referenced by any schedule or VOG message - shared by the startup
+// warm-up (fn_startup) and the periodic background sweep (fn_periodic_cue_refresh), so
+// both use identical logic instead of near-duplicate copies.
+async function refreshAllReferencedCues(core, refreshCueCacheFn) {
+  const cueNumbers = new Set([
+    ...core.db.schedules.listAll(core.db.connection).map((s) => s.qlabCueNumber),
+    ...core.db.vogMessages.listAll(core.db.connection).map((v) => v.qlabCueNumber)
+  ]);
+
+  const results = {};
+  for (const cueNumber of cueNumbers) {
+    results[cueNumber] = await refreshCueCacheFn(core, cueNumber);
+  }
+  return results;
+}
+
+module.exports = { refreshCueCache, refreshAllReferencedCues };

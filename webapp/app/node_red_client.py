@@ -82,6 +82,9 @@ class NodeRedClient:
     async def list_cues(self) -> dict:
         return await self._request("GET", "/cues")
 
+    async def refresh_all_cues(self) -> dict:
+        return await self._request("POST", "/cues/refresh-all")
+
     async def get_health(self) -> dict:
         return await self._request("GET", "/health")
 

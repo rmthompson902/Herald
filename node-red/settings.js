@@ -3,7 +3,7 @@
 const path = require('path');
 const { createCore } = require('../lib/index');
 const cronSyncMessages = require('./lib/applyCronSyncDirectives');
-const { refreshCueCache } = require('./lib/refreshCueCache');
+const { refreshCueCache, refreshAllReferencedCues } = require('./lib/refreshCueCache');
 
 const core = createCore({
   dbPath: process.env.DB_PATH || path.join(__dirname, '..', 'data', 'schedule.db'),
@@ -26,7 +26,8 @@ module.exports = {
   functionGlobalContext: {
     core,
     cronSyncMessages,
-    refreshCueCache
+    refreshCueCache,
+    refreshAllReferencedCues
   },
 
   logging: {

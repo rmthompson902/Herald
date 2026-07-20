@@ -23,9 +23,12 @@
                 </div>
                 <div class="col-md-6">
                     <label for="qlab_cue_number" class="form-label">QLab cue number</label>
-                    <input type="text" class="form-control" id="qlab_cue_number" name="qlab_cue_number" required
-                           list="cueList" value="{{ vog_message.qlabCueNumber if vog_message else '' }}" placeholder="e.g. 104">
-                    <datalist id="cueList"></datalist>
+                    <div class="cue-picker">
+                        <input type="text" class="form-control" id="qlab_cue_number" name="qlab_cue_number" required
+                               autocomplete="off" value="{{ vog_message.qlabCueNumber if vog_message else '' }}"
+                               placeholder="Search cues by number or name...">
+                        <div class="cue-picker-menu" hidden></div>
+                    </div>
                     <div class="form-text">Zones are read live from QLab - set this cue's output levels to cover whichever zones it should interrupt.</div>
                 </div>
 

@@ -3,19 +3,15 @@
  * /schedules/{id}/edit (see webapp/templates/schedules/form.html).
  */
 document.addEventListener('DOMContentLoaded', () => {
-    const cueList = document.getElementById('cueList');
+    const cueInput = document.getElementById('qlab_cue_number');
+    const cueMenu = cueInput.closest('.cue-picker').querySelector('.cue-picker-menu');
     CueAPI.getAllCues().then((result) => {
         if (result && result.status === 'success' && Array.isArray(result.cues)) {
-            result.cues.forEach((cue) => {
-                const option = document.createElement('option');
-                option.value = cue.number;
-                option.label = cue.name || cue.number;
-                cueList.appendChild(option);
-            });
+            new CuePicker(cueInput, cueMenu, result.cues);
         }
     }).catch(() => {
-        // Cue browsing needs Node-RED/QLab live - a blank datalist just
-        // means the operator types the cue number manually, no hard failure.
+        // Cue browsing needs Node-RED/QLab live - without it the operator
+        // just types the cue number manually, no hard failure.
     });
 
     const form = document.getElementById('scheduleForm');

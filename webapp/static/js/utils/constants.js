@@ -88,6 +88,11 @@ window.AppConstants = {
         VOG_UPDATED: 'VOG message updated',
         VOG_REMOVED: 'VOG message deleted',
         VOG_TRIGGERED: 'VOG message triggered',
+        VOG_DISABLED_TOOLTIP: 'Enable this message before it can be triggered',
+        VOG_ENABLED_TOOLTIP: 'Trigger this VOG message now',
+
+        // Cue cache
+        CUE_REFRESHED: 'Cue data refreshed from QLab',
 
         // Validation messages
         REQUIRED_FIELD: 'This field is required',
@@ -98,11 +103,11 @@ window.AppConstants = {
         SAVING: 'Saving...',
         DELETING: 'Deleting...',
         TRIGGERING: 'Triggering...',
+        REFRESHING: 'Refreshing...',
 
         // Confirmation messages
         CONFIRM_DELETE_SCHEDULE: 'Delete this schedule? It will stop firing immediately.',
-        CONFIRM_DELETE_VOG: 'Delete this VOG message? It can no longer be triggered.',
-        CONFIRM_TRIGGER_VOG: 'This stops every cue currently playing in this message\'s zones and plays the emergency message. Continue?'
+        CONFIRM_DELETE_VOG: 'Delete this VOG message? It can no longer be triggered.'
     }
 };
 

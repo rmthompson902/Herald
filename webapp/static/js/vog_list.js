@@ -3,23 +3,21 @@
  * delete row actions to the VogAPI (see static/js/utils/api-client.js).
  */
 document.addEventListener('DOMContentLoaded', () => {
+    // Enabled *is* armed for VOG - the toggle is the real safety gate (see
+    // docs/claude-plan.md), so an armed Trigger fires immediately with no
+    // extra confirmation step. A disarmed message's button is server-rendered
+    // disabled and the backend rejects it too either way.
     document.querySelectorAll('.trigger-vog-btn').forEach((button) => {
-        button.addEventListener('click', () => {
+        button.addEventListener('click', async () => {
             const vogId = button.dataset.vogId;
-            ModalManager.showConfirmation(
-                'Trigger VOG Message',
-                window.AppConstants.MESSAGES.CONFIRM_TRIGGER_VOG,
-                async () => {
-                    const result = await ButtonStateManager.handleAsync(
-                        button,
-                        () => VogAPI.triggerVogMessage(vogId),
-                        { loadingText: window.AppConstants.MESSAGES.TRIGGERING, successText: 'Triggered' }
-                    );
-                    if (result) {
-                        window.showToast('VOG Triggered', result.message || window.AppConstants.MESSAGES.VOG_TRIGGERED, 'warning');
-                    }
-                }
+            const result = await ButtonStateManager.handleAsync(
+                button,
+                () => VogAPI.triggerVogMessage(vogId),
+                { loadingText: window.AppConstants.MESSAGES.TRIGGERING, successText: 'Triggered' }
             );
+            if (result) {
+                window.showToast('VOG Triggered', result.message || window.AppConstants.MESSAGES.VOG_TRIGGERED, 'warning');
+            }
         });
     });
 

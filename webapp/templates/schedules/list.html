@@ -28,6 +28,7 @@
                     <th>Zones</th>
                     <th>Duration</th>
                     <th>Timing</th>
+                    <th>Next Fire</th>
                     <th>Status</th>
                     <th class="text-end">Actions</th>
                 </tr>
@@ -60,6 +61,9 @@
                         {% if schedule.weekdays|length < 7 %}
                             &middot; {{ schedule.weekdays|length }}/7 days
                         {% endif %}
+                    </td>
+                    <td class="next-fire-cell" data-schedule-id="{{ schedule.id }}">
+                        {% if schedule.enabled %}<span class="text-muted">&hellip;</span>{% else %}<span class="text-muted">&mdash;</span>{% endif %}
                     </td>
                     <td>{{ sb.schedule_status_badge(schedule.enabled) }}</td>
                     <td class="text-end">

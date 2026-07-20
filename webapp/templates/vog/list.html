@@ -43,14 +43,17 @@
                             <span class="text-muted">not yet cached</span>
                         {% endif %}
                     </td>
-                    <td>{{ sb.schedule_status_badge(vog_message.enabled) }}</td>
+                    <td>{{ sb.vog_armed_status_badge(vog_message.enabled) }}</td>
                     <td class="text-end">
                         <div class="d-inline-flex gap-1">
-                            <button type="button" class="btn btn-vog trigger-vog-btn" data-vog-id="{{ vog_message.id }}"
-                                    data-bs-toggle="tooltip" data-bs-title="Trigger this VOG message now">
+                            <button type="button" class="btn btn-vog trigger-vog-btn"
+                                    data-vog-id="{{ vog_message.id }}" data-vog-name="{{ vog_message.name }}"
+                                    {% if not vog_message.enabled %}disabled{% endif %}
+                                    data-bs-toggle="tooltip"
+                                    data-bs-title="{{ 'Trigger this VOG message now' if vog_message.enabled else 'Enable this message before it can be triggered' }}">
                                 <i class="fas fa-bullhorn me-1"></i>Trigger
                             </button>
-                            {{ ab.action_button('toggle', 'toggle-on' if vog_message.enabled else 'toggle-off', '', 'Enable / disable', data_attrs={'vog-id': vog_message.id}, classes='toggle-vog-btn') }}
+                            {{ ab.action_button('toggle', 'toggle-on' if vog_message.enabled else 'toggle-off', '', 'Arm / disarm', data_attrs={'vog-id': vog_message.id}, classes='toggle-vog-btn') }}
                             <a href="{{ url_for('vog_edit', vog_id=vog_message.id) }}" class="btn action-btn action-btn-notext btn-outline-info" data-bs-toggle="tooltip" data-bs-title="Edit">
                                 <i class="fas fa-edit"></i>
                             </a>

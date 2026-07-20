@@ -31,8 +31,12 @@
             {% endif %}
         </div>
 
-        {% if actions %}
         <div class="d-flex gap-2">
+            <button type="button" class="btn btn-outline-secondary" id="refreshCuesBtn"
+                    data-bs-toggle="tooltip" data-bs-placement="bottom"
+                    data-bs-title="Re-read every referenced cue's duration and zones from QLab">
+                <i class="fas fa-sync-alt me-1"></i>Refresh Cue Data
+            </button>
             {% for action in actions %}
                 {% if action.type == 'button' %}
                     <button type="button"
@@ -79,7 +83,6 @@
                 {% endif %}
             {% endfor %}
         </div>
-        {% endif %}
     </div>
 </div>
 {% endmacro %}

@@ -36,7 +36,7 @@
     "type": "function",
     "z": "tab1",
     "name": "Open OSC, arm health, rebuild cron jobs from DB",
-    "func": "const core = global.get('core');\nconst cronSyncMessages = global.get('cronSyncMessages');\nconst refreshCueCache = global.get('refreshCueCache');\n\nreturn (async () => {\n    await core.osc.client.open();\n    await core.health.start();\n\n    const directives = core.scheduling.cronSync.rebuildAll(core.db.connection);\n    const msgs = cronSyncMessages.toCronPlusMessages(directives);\n\n    node.log(`Startup: rebuilding ${msgs.length} cron-plus directive(s)`);\n\n    // Best-effort cue_cache warm-up for every referenced cue, so the webapp has zone/\n    // duration data to display even before any schedule is created/edited post-boot.\n    const cueNumbers = new Set([\n        ...core.db.schedules.listAll(core.db.connection).map((s) => s.qlabCueNumber),\n        ...core.db.vogMessages.listAll(core.db.connection).map((v) => v.qlabCueNumber)\n    ]);\n    for (const cueNumber of cueNumbers) {\n        const result = await refreshCueCache(core, cueNumber);\n        if (result && result.error) {\n            node.warn(`cue_cache warm-up failed for ${cueNumber}: ${result.error}`);\n        }\n    }\n\n    return [msgs];\n})();",
+    "func": "const core = global.get('core');\nconst cronSyncMessages = global.get('cronSyncMessages');\nconst refreshCueCache = global.get('refreshCueCache');\nconst refreshAllReferencedCues = global.get('refreshAllReferencedCues');\n\nreturn (async () => {\n    await core.osc.client.open();\n    await core.health.start();\n\n    const directives = core.scheduling.cronSync.rebuildAll(core.db.connection);\n    const msgs = cronSyncMessages.toCronPlusMessages(directives);\n\n    node.log(`Startup: rebuilding ${msgs.length} cron-plus directive(s)`);\n\n    // Best-effort cue_cache warm-up for every referenced cue, so the webapp has zone/\n    // duration data to display even before any schedule is created/edited post-boot.\n    const results = await refreshAllReferencedCues(core, refreshCueCache);\n    for (const [cueNumber, result] of Object.entries(results)) {\n        if (result && result.error) {\n            node.warn(`cue_cache warm-up failed for ${cueNumber}: ${result.error}`);\n        }\n    }\n\n    return [msgs];\n})();",
     "outputs": 1,
     "timeout": 0,
     "noerr": 0,
@@ -583,7 +583,7 @@
     "type": "function",
     "z": "tab_api",
     "name": "trigger VOG (interim stub)",
-    "func": "const core = global.get('core');\nconst id = Number(msg.req.params.id);\n\nconst vogMessage = core.db.vogMessages.getById(core.db.connection, id);\nif (!vogMessage) {\n    msg.statusCode = 404;\n    msg.payload = { status: 'error', message: `VOG message ${id} not found` };\n    return msg;\n}\n\nif (!core.health.isArmed()) {\n    msg.statusCode = 503;\n    msg.payload = { status: 'error', message: 'qlab_disconnected' };\n    return msg;\n}\n\n// Interim stub: direct playCue until vogInterruptHandler (Phase 9) lands - the real\n// stop-everything-in-scope-then-play behavior isn't implemented yet. This endpoint's\n// contract (method/path/response shape) is stable now; only its internals upgrade later.\nreturn (async () => {\n    await core.osc.protocol.playCue(vogMessage.qlabCueNumber);\n    msg.statusCode = 200;\n    msg.payload = { status: 'success' };\n    return msg;\n})();",
+    "func": "const core = global.get('core');\nconst id = Number(msg.req.params.id);\n\nconst vogMessage = core.db.vogMessages.getById(core.db.connection, id);\nif (!vogMessage) {\n    msg.statusCode = 404;\n    msg.payload = { status: 'error', message: `VOG message ${id} not found` };\n    return msg;\n}\n\nif (!vogMessage.enabled) {\n    msg.statusCode = 400;\n    msg.payload = { status: 'error', message: 'VOG message is disabled - enable it before triggering' };\n    return msg;\n}\n\nif (!core.health.isArmed()) {\n    msg.statusCode = 503;\n    msg.payload = { status: 'error', message: 'qlab_disconnected' };\n    return msg;\n}\n\n// Interim stub: direct playCue until vogInterruptHandler (Phase 9) lands - the real\n// stop-everything-in-scope-then-play behavior isn't implemented yet. This endpoint's\n// contract (method/path/response shape) is stable now; only its internals upgrade later.\nreturn (async () => {\n    await core.osc.protocol.playCue(vogMessage.qlabCueNumber);\n    msg.statusCode = 200;\n    msg.payload = { status: 'success' };\n    return msg;\n})();",
     "outputs": 1,
     "timeout": 0,
     "noerr": 0,
@@ -751,6 +751,97 @@
     "headers": {},
     "x": 620,
     "y": 1040,
+    "wires": []
+  },
+  {
+    "id": "inject_periodic_cue_refresh",
+    "type": "inject",
+    "z": "tab1",
+    "name": "Every 5 min",
+    "props": [
+      {
+        "p": "payload"
+      }
+    ],
+    "repeat": "300",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "x": 170,
+    "y": 420,
+    "wires": [
+      [
+        "fn_periodic_cue_refresh"
+      ]
+    ]
+  },
+  {
+    "id": "fn_periodic_cue_refresh",
+    "type": "function",
+    "z": "tab1",
+    "name": "Periodic cue_cache refresh",
+    "func": "const core = global.get('core');\nconst refreshCueCache = global.get('refreshCueCache');\nconst refreshAllReferencedCues = global.get('refreshAllReferencedCues');\n\nreturn (async () => {\n    const results = await refreshAllReferencedCues(core, refreshCueCache);\n    const failures = Object.entries(results).filter(([, r]) => r && r.error);\n    if (failures.length > 0) {\n        node.warn(`Periodic cue_cache refresh: ${failures.length} cue(s) failed`);\n    }\n    return null;\n})();",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 430,
+    "y": 420,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "httpin_refresh_all_cues",
+    "type": "http in",
+    "z": "tab_api",
+    "name": "POST /api/cues/refresh-all",
+    "url": "/api/cues/refresh-all",
+    "method": "post",
+    "upload": false,
+    "swaggerDoc": "",
+    "x": 200,
+    "y": 1200,
+    "wires": [
+      [
+        "fn_refresh_all_cues"
+      ]
+    ]
+  },
+  {
+    "id": "fn_refresh_all_cues",
+    "type": "function",
+    "z": "tab_api",
+    "name": "refresh all referenced cues",
+    "func": "const core = global.get('core');\nconst refreshCueCache = global.get('refreshCueCache');\nconst refreshAllReferencedCues = global.get('refreshAllReferencedCues');\n\nreturn (async () => {\n    const results = await refreshAllReferencedCues(core, refreshCueCache);\n    const failed = Object.entries(results)\n        .filter(([, r]) => r && r.error)\n        .map(([cueNumber]) => cueNumber);\n\n    msg.statusCode = 200;\n    msg.payload = {\n        status: 'success',\n        refreshedCount: Object.keys(results).length - failed.length,\n        failed\n    };\n    return msg;\n})();",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 460,
+    "y": 1200,
+    "wires": [
+      [
+        "httpresp_refresh_all_cues"
+      ]
+    ]
+  },
+  {
+    "id": "httpresp_refresh_all_cues",
+    "type": "http response",
+    "z": "tab_api",
+    "name": "",
+    "statusCode": "",
+    "headers": {},
+    "x": 720,
+    "y": 1200,
     "wires": []
   }
 ]

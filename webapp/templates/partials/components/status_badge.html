@@ -72,3 +72,12 @@
 
     {{ status_badge(status, 'armed', '', status_text, tooltip) }}
 {% endmacro %}
+
+{# VOG message armed/disarmed badge - enabled *is* armed for VOG (the toggle
+   is the real safety gate; there's no separate trigger confirmation) #}
+{% macro vog_armed_status_badge(is_enabled, tooltip='') %}
+    {% set status = 'armed' if is_enabled else 'disarmed' %}
+    {% set status_text = 'Armed' if is_enabled else 'Disarmed' %}
+
+    {{ status_badge(status, 'armed', '', status_text, tooltip) }}
+{% endmacro %}

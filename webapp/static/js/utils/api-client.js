@@ -136,6 +136,11 @@ class ScheduleAPI extends APIClient {
         return this.get('/api/schedules');
     }
 
+    /** @returns {Promise} - { nextOccurrences: { [scheduleId]: isoString|null } }, enabled schedules only */
+    static async getNextOccurrences() {
+        return this.get('/api/schedules/next-occurrences');
+    }
+
     /**
      * @param {Object} scheduleData
      * @returns {Promise} - API response
@@ -236,6 +241,14 @@ class CueAPI extends APIClient {
     /** @returns {Promise} - Live cue list from QLab */
     static async getAllCues() {
         return this.get('/api/cues');
+    }
+
+    /**
+     * Re-reads every referenced cue's duration/zones live from QLab into cue_cache.
+     * @returns {Promise} - API response with { refreshedCount, failed }
+     */
+    static async refreshAllCues() {
+        return this.post('/api/cues/refresh-all');
     }
 }
 
