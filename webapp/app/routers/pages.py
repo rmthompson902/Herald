@@ -7,6 +7,7 @@ browser via static/js/utils/api-client.js.
 
 from fastapi import APIRouter, Request
 
+from app.audio_patch_map import list_zone_names
 from app.db import queries
 from app.log_reader import read_recent_entries
 from app.node_red_client import NodeRedUnavailableError, node_red_client
@@ -18,10 +19,36 @@ router = APIRouter()
 def _render_schedules_list(request: Request):
     schedules = queries.list_schedules()
     cue_cache_by_number = {c["qlabCueNumber"]: c for c in queries.list_cue_cache()}
+    zone_names = list_zone_names()
+
+    # One table per configured zone (see app/audio_patch_map.py) - a schedule whose cue
+    # resolves to more than one zone (a multi-zone Group cue) appears in every one of those
+    # zones' tables, since each zone now admits/ducks/fires/frees it completely
+    # independently (see lib/queue/zoneQueueEngine.js's per-zone decomposition). A schedule
+    # not yet resolved to any configured zone (cue_cache stale/missing, or a genuine
+    # mismatch) falls into "Not Yet Assigned" rather than silently disappearing.
+    schedules_by_zone: dict[str, list] = {zone: [] for zone in zone_names}
+    unassigned_schedules = []
+    for schedule in schedules:
+        cue = cue_cache_by_number.get(schedule["qlabCueNumber"])
+        zones = cue["zones"] if cue else []
+        matched_zones = [zone for zone in zones if zone in schedules_by_zone]
+        if matched_zones:
+            for zone in matched_zones:
+                schedules_by_zone[zone].append(schedule)
+        else:
+            unassigned_schedules.append(schedule)
+
     return templates.TemplateResponse(
         request,
         "schedules/list.html",
-        {"schedules": schedules, "cue_cache_by_number": cue_cache_by_number},
+        {
+            "has_schedules": bool(schedules),
+            "zone_names": zone_names,
+            "schedules_by_zone": schedules_by_zone,
+            "unassigned_schedules": unassigned_schedules,
+            "cue_cache_by_number": cue_cache_by_number,
+        },
     )
 
 

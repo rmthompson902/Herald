@@ -16,6 +16,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 class Settings(BaseSettings):
     node_red_api_base: str = "http://127.0.0.1:1880/api"
     db_path: str = str(REPO_ROOT / "data" / "schedule.db")
+    audio_patch_map_path: str = str(REPO_ROOT / "config" / "audio-patch-map.json")
     events_log_dir: str = str(REPO_ROOT / "logs")
     port: int = 8000
     log_level: str = "INFO"

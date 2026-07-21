@@ -1,0 +1,77 @@
+{% import "partials/components/status_badge.html" as sb %}
+{% import "partials/components/action_button.html" as ab %}
+{% import "partials/components/empty_state.html" as es %}
+
+{% macro schedules_table(title, icon, schedules, cue_cache_by_number, empty_message) %}
+{#
+One zone's worth of the schedules list - every per-zone table on the schedules page (and
+the "Not Yet Assigned" table) is this exact same macro, just called with a different title/
+schedule subset, so they can never visually or behaviorally drift apart from one another.
+
+Usage:
+{{ schedules_table('Zone 1', 'volume-up', schedules_by_zone['Zone 1'], cue_cache_by_number, 'No schedules target Zone 1 yet.') }}
+#}
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-{{ icon }} me-2"></i>{{ title }}</h5>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Cue</th>
+                    <th>Duration</th>
+                    <th>Timing</th>
+                    <th>Next Fire</th>
+                    <th>Status</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if not schedules %}
+                    {{ es.table_empty_state('check-circle', empty_message, colspan=7) }}
+                {% else %}
+                {% for schedule in schedules %}
+                {% set cue = cue_cache_by_number.get(schedule.qlabCueNumber) %}
+                <tr>
+                    <td>{{ schedule.name }}</td>
+                    <td><code>{{ schedule.qlabCueNumber }}</code></td>
+                    <td>
+                        {% if cue and cue.durationSeconds is not none %}
+                            {{ '%.1f'|format(cue.durationSeconds) }}s
+                        {% else %}
+                            <span class="text-muted">&mdash;</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        every {{ schedule.intervalSeconds }}s
+                        {% if schedule.startTime and schedule.endTime %}
+                            &middot; {{ schedule.startTime }}&ndash;{{ schedule.endTime }}
+                        {% endif %}
+                        {% if schedule.weekdays|length < 7 %}
+                            &middot; {{ schedule.weekdays|length }}/7 days
+                        {% endif %}
+                    </td>
+                    <td class="next-fire-cell" data-schedule-id="{{ schedule.id }}">
+                        {% if schedule.enabled %}<span class="text-muted">&hellip;</span>{% else %}<span class="text-muted">&mdash;</span>{% endif %}
+                    </td>
+                    <td>{{ sb.schedule_status_badge(schedule.enabled) }}</td>
+                    <td class="text-end">
+                        <div class="d-inline-flex gap-1">
+                            {{ ab.action_button('play', 'play', '', 'Play now', data_attrs={'schedule-id': schedule.id}, classes='play-now-btn') }}
+                            {{ ab.action_button('toggle', 'toggle-on' if schedule.enabled else 'toggle-off', '', 'Enable / disable', data_attrs={'schedule-id': schedule.id}, classes='toggle-schedule-btn') }}
+                            <a href="{{ url_for('schedule_edit', schedule_id=schedule.id) }}" class="btn action-btn action-btn-notext btn-outline-info" data-bs-toggle="tooltip" data-bs-title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            {{ ab.action_button('delete', 'trash', '', 'Delete', data_attrs={'schedule-id': schedule.id}, classes='delete-schedule-btn') }}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endmacro %}

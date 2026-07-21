@@ -1,87 +1,28 @@
 {% extends "base.html" %}
 {% import "partials/components/page_header.html" as ph %}
 {% import "partials/components/empty_state.html" as es %}
-{% import "partials/components/status_badge.html" as sb %}
-{% import "partials/components/action_button.html" as ab %}
+{% import "partials/components/schedules_table.html" as st with context %}
 
 {% block title %}Schedules - Sitewide Audio Messaging{% endblock %}
 
 {% block content %}
 {{ ph.page_header(
     'Schedules',
-    'Recurring audio messages, one row per zone-scoped cue.',
+    'Recurring audio messages, one table per zone - each zone plays independently.',
     [{'type': 'link', 'url': url_for('schedule_new'), 'text': 'Add Schedule', 'icon': 'fas fa-plus', 'class': 'btn-primary'}],
     [],
     'fas fa-calendar-alt'
 ) }}
 
-{% if not schedules %}
+{% if not has_schedules %}
     {{ es.empty_state('calendar-plus', 'No schedules yet', 'Add a schedule to start playing recurring messages across a zone.', 'Add Schedule', url_for('schedule_new')) }}
 {% else %}
-<div class="card">
-    <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Cue</th>
-                    <th>Zones</th>
-                    <th>Duration</th>
-                    <th>Timing</th>
-                    <th>Next Fire</th>
-                    <th>Status</th>
-                    <th class="text-end">Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for schedule in schedules %}
-                {% set cue = cue_cache_by_number.get(schedule.qlabCueNumber) %}
-                <tr>
-                    <td>{{ schedule.name }}</td>
-                    <td><code>{{ schedule.qlabCueNumber }}</code></td>
-                    <td>
-                        {% if cue and cue.zones %}
-                            {% for zone in cue.zones %}<span class="badge bg-secondary me-1">{{ zone }}</span>{% endfor %}
-                        {% else %}
-                            <span class="text-muted">not yet cached</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if cue and cue.durationSeconds is not none %}
-                            {{ '%.1f'|format(cue.durationSeconds) }}s
-                        {% else %}
-                            <span class="text-muted">&mdash;</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        every {{ schedule.intervalSeconds }}s
-                        {% if schedule.startTime and schedule.endTime %}
-                            &middot; {{ schedule.startTime }}&ndash;{{ schedule.endTime }}
-                        {% endif %}
-                        {% if schedule.weekdays|length < 7 %}
-                            &middot; {{ schedule.weekdays|length }}/7 days
-                        {% endif %}
-                    </td>
-                    <td class="next-fire-cell" data-schedule-id="{{ schedule.id }}">
-                        {% if schedule.enabled %}<span class="text-muted">&hellip;</span>{% else %}<span class="text-muted">&mdash;</span>{% endif %}
-                    </td>
-                    <td>{{ sb.schedule_status_badge(schedule.enabled) }}</td>
-                    <td class="text-end">
-                        <div class="d-inline-flex gap-1">
-                            {{ ab.action_button('play', 'play', '', 'Play now', data_attrs={'schedule-id': schedule.id}, classes='play-now-btn') }}
-                            {{ ab.action_button('toggle', 'toggle-on' if schedule.enabled else 'toggle-off', '', 'Enable / disable', data_attrs={'schedule-id': schedule.id}, classes='toggle-schedule-btn') }}
-                            <a href="{{ url_for('schedule_edit', schedule_id=schedule.id) }}" class="btn action-btn action-btn-notext btn-outline-info" data-bs-toggle="tooltip" data-bs-title="Edit">
-                                <i class="fas fa-edit"></i>
-                            </a>
-                            {{ ab.action_button('delete', 'trash', '', 'Delete', data_attrs={'schedule-id': schedule.id}, classes='delete-schedule-btn') }}
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
+    {% for zone in zone_names %}
+        {{ st.schedules_table(zone, 'volume-up', schedules_by_zone[zone], cue_cache_by_number, 'No schedules target ' + zone + ' yet.') }}
+    {% endfor %}
+    {% if unassigned_schedules %}
+        {{ st.schedules_table('Not Yet Assigned', 'question-circle', unassigned_schedules, cue_cache_by_number, 'Nothing here.') }}
+    {% endif %}
 {% endif %}
 {% endblock %}
 
