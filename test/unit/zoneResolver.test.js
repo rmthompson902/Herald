@@ -158,4 +158,11 @@ describe('resolveDurationSecondsByZone', () => {
     const protocol = fakeProtocol();
     await expect(resolveDurationSecondsByZone(protocol, patchMap, 'does-not-exist')).resolves.toEqual({});
   });
+
+  it('returns an empty object rather than throwing when the underlying getCueLists/tree resolution itself fails (e.g. concurrent schedules racing QLab for the same OSC reply)', async () => {
+    const protocol = fakeProtocol();
+    protocol.getCueLists.mockRejectedValue(new Error('OSC request timed out waiting for /reply/cueLists'));
+
+    await expect(resolveDurationSecondsByZone(protocol, patchMap, '9901')).resolves.toEqual({});
+  });
 });

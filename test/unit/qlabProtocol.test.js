@@ -68,6 +68,48 @@ describe('QlabProtocol', () => {
     expect(client.request).not.toHaveBeenCalled();
   });
 
+  it('getCueLists de-dupes concurrent calls into a single OSC request (QLab only answers one of several simultaneous identical-address queries)', async () => {
+    const client = fakeClient();
+    let resolveRequest;
+    client.request.mockReturnValue(new Promise((resolve) => { resolveRequest = resolve; }));
+    const protocol = new QlabProtocol(client);
+
+    const p1 = protocol.getCueLists();
+    const p2 = protocol.getCueLists();
+    const p3 = protocol.getCueLists();
+
+    expect(client.request).toHaveBeenCalledTimes(1);
+    expect(client.request).toHaveBeenCalledWith('/cueLists');
+
+    resolveRequest(cueListsFixture.data);
+    const [r1, r2, r3] = await Promise.all([p1, p2, p3]);
+    expect(r1).toBe(cueListsFixture.data);
+    expect(r2).toBe(cueListsFixture.data);
+    expect(r3).toBe(cueListsFixture.data);
+  });
+
+  it('getCueLists issues a fresh request for a call that starts after the previous one already resolved', async () => {
+    const client = fakeClient();
+    client.request.mockResolvedValueOnce(cueListsFixture.data).mockResolvedValueOnce(cueListsFixture.data);
+    const protocol = new QlabProtocol(client);
+
+    await protocol.getCueLists();
+    await protocol.getCueLists();
+
+    expect(client.request).toHaveBeenCalledTimes(2);
+  });
+
+  it('getCueLists issues a fresh request after a prior in-flight one rejects (not permanently stuck sharing a failed call)', async () => {
+    const client = fakeClient();
+    client.request.mockRejectedValueOnce(new Error('OSC request timed out waiting for /reply/cueLists'));
+    client.request.mockResolvedValueOnce(cueListsFixture.data);
+    const protocol = new QlabProtocol(client);
+
+    await expect(protocol.getCueLists()).rejects.toThrow('timed out');
+    await expect(protocol.getCueLists()).resolves.toBe(cueListsFixture.data);
+    expect(client.request).toHaveBeenCalledTimes(2);
+  });
+
   it('listCues flattens the real cueLists fixture into a flat cue array', async () => {
     const client = fakeClient();
     client.request.mockResolvedValue(cueListsFixture.data);
