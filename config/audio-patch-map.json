@@ -1,0 +1,7 @@
+{
+  "_comment": "Per-zone config: which Messaging Audio Patch (QLab, 1-based index into /settings/audio/patchList - see /cue/{n}/patch) routes to this zone, plus the zone's duck/unduck QLab cue numbers for background-music ducking. This is the ONLY manual zone configuration in the system - edit to match the real venue before deployment.",
+  "zones": {
+    "Zone 1": { "messagingPatchId": "1", "duckCueNumber": "1198", "unduckCueNumber": "1199" },
+    "Zone 2": { "messagingPatchId": "3", "duckCueNumber": "2198", "unduckCueNumber": "2199" }
+  }
+}

@@ -17,14 +17,23 @@ describe('QlabProtocol', () => {
     expect(client.request).toHaveBeenCalledWith('/cue/101/duration');
   });
 
-  it('getLevels returns the raw matrix untouched', async () => {
+  it('getCuePatch requests the right address and returns the patch id untouched', async () => {
     const client = fakeClient();
-    const matrix = [[0, 0, 0], [0, 0, -60], [0, -60, 0]];
-    client.request.mockResolvedValue(matrix);
+    client.request.mockResolvedValue(1);
     const protocol = new QlabProtocol(client);
 
-    await expect(protocol.getLevels('101')).resolves.toBe(matrix);
-    expect(client.request).toHaveBeenCalledWith('/cue/101/levels');
+    await expect(protocol.getCuePatch('1101')).resolves.toBe(1);
+    expect(client.request).toHaveBeenCalledWith('/cue/1101/patch');
+  });
+
+  it('getAudioPatches requests the workspace patch list', async () => {
+    const client = fakeClient();
+    const patches = [{ name: 'Zone 1 Messages', uniqueID: 'abc', routing: [1], cueOutputChannels: 2 }];
+    client.request.mockResolvedValue(patches);
+    const protocol = new QlabProtocol(client);
+
+    await expect(protocol.getAudioPatches()).resolves.toBe(patches);
+    expect(client.request).toHaveBeenCalledWith('/settings/audio/patchList');
   });
 
   it('playCue/stopCue use requestOptionalReply, not request (success is silent, see oscClient)', async () => {

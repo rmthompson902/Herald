@@ -1,0 +1,69 @@
+{
+  "description": "Synthetic /cueLists shape modeled on the real patch-based spike capture (test/fixtures/qlab-osc-findings.md's 'Patch-based zone-derivation spike' section) - used by test/unit/zoneResolver.test.js. Patch ids referenced here (1, 2, 3) match config/audio-patch-map.json's Zone 1 (patch 1) / Zone 2 (patch 3); patch 2 (Zone 1 Music) is deliberately unmapped to exercise the zero-zone case.",
+  "data": [
+    {
+      "number": "1100",
+      "uniqueID": "list-zone1-messages",
+      "type": "Cue List",
+      "name": "Zone 1 Messages",
+      "cues": [
+        { "number": "1101", "uniqueID": "cue-1101", "type": "Audio", "name": "Message 1", "cues": [] },
+        { "number": "1201", "uniqueID": "cue-1201", "type": "Audio", "name": "Music track (unmapped patch)", "cues": [] }
+      ]
+    },
+    {
+      "number": "2100",
+      "uniqueID": "list-zone2-messages",
+      "type": "Cue List",
+      "name": "Zone 2 Messages",
+      "cues": [
+        { "number": "2101", "uniqueID": "cue-2101", "type": "Audio", "name": "Message 1", "cues": [] }
+      ]
+    },
+    {
+      "number": "9900",
+      "uniqueID": "list-multi-zone",
+      "type": "Cue List",
+      "name": "Multi Zone Messages",
+      "cues": [
+        {
+          "number": "9901",
+          "uniqueID": "group-9901",
+          "type": "Group",
+          "name": "Global Message 1",
+          "cues": [
+            { "number": "990101", "uniqueID": "cue-990101", "type": "Audio", "name": "Message 1", "cues": [] },
+            { "number": "990102", "uniqueID": "cue-990102", "type": "Audio", "name": "Message 2", "cues": [] }
+          ]
+        },
+        {
+          "number": "9902",
+          "uniqueID": "group-9902",
+          "type": "Group",
+          "name": "Nested Group",
+          "cues": [
+            {
+              "number": "990201",
+              "uniqueID": "group-990201",
+              "type": "Group",
+              "name": "Nested Child Group",
+              "cues": [
+                { "number": "99020101", "uniqueID": "cue-99020101", "type": "Audio", "name": "Deeply nested message", "cues": [] }
+              ]
+            }
+          ]
+        },
+        {
+          "number": "9903",
+          "uniqueID": "group-9903",
+          "type": "Group",
+          "name": "Same Zone Group",
+          "cues": [
+            { "number": "990301", "uniqueID": "cue-990301", "type": "Audio", "name": "Message 1", "cues": [] },
+            { "number": "990302", "uniqueID": "cue-990302", "type": "Audio", "name": "Message 2", "cues": [] }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,5 +1,0 @@
-{
-  "_comment": "Dante output channel number -> zone name. This is the ONLY manual zone configuration in the whole system, and it must be edited to match the real venue's physical Dante wiring before deployment. Placeholder values below match the dev machine's 2-channel test output device.",
-  "1": "Zone 1",
-  "2": "Zone 2"
-}

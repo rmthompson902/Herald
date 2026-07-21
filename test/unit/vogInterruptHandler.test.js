@@ -9,12 +9,15 @@ function makeDeps({ zones = ['Zone 1', 'Zone 2'], occupancy = {} } = {}) {
     getUniqueId: jest.fn().mockResolvedValue('vog-uid')
   };
   const resolveZonesForCue = jest.fn().mockResolvedValue(zones);
+  const resolveDurationSecondsByZone = jest.fn().mockResolvedValue({});
   const queueEngine = {
     getState: jest.fn().mockReturnValue({ occupancy, queued: {} }),
     preemptZones: jest.fn(),
+    markDucked: jest.fn(),
     enqueue: jest.fn().mockResolvedValue({ fired: true })
   };
-  return { qlabProtocol, resolveZonesForCue, queueEngine };
+  const duckImmediately = jest.fn().mockResolvedValue(undefined);
+  return { qlabProtocol, resolveZonesForCue, resolveDurationSecondsByZone, queueEngine, duckImmediately };
 }
 
 const vogMessage = { id: 7, name: 'Evacuate All', qlabCueNumber: '900' };
@@ -110,6 +113,18 @@ describe('vogInterruptHandler.triggerVog', () => {
     expect(result).toEqual({ fired: true, zones: ['Zone 1', 'Zone 2'] });
   });
 
+  test('resolves and passes through each zone\'s own discrete duration (e.g. for a multi-zone Group cue)', async () => {
+    const deps = makeDeps({ zones: ['Zone 1', 'Zone 2'] });
+    deps.resolveDurationSecondsByZone.mockResolvedValue({ 'Zone 1': 5, 'Zone 2': 10 });
+
+    await triggerVog(deps, vogMessage);
+
+    expect(deps.resolveDurationSecondsByZone).toHaveBeenCalledWith('900');
+    expect(deps.queueEngine.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({ durationSecondsByZone: { 'Zone 1': 5, 'Zone 2': 10 } })
+    );
+  });
+
   test('a stopCue rejection for one occupant does not block stopping/preempting the rest', async () => {
     const deps = makeDeps({
       zones: ['Zone 1', 'Zone 2'],
@@ -144,5 +159,51 @@ describe('vogInterruptHandler.triggerVog', () => {
     const result = await triggerVog(deps, vogMessage);
 
     expect(result).toEqual({ fired: false, zones: ['Zone 1'] });
+  });
+
+  test('ducks every resolved zone immediately, before enqueueing the VOG cue', async () => {
+    const deps = makeDeps({ zones: ['Zone 1', 'Zone 2'] });
+
+    await triggerVog(deps, vogMessage);
+
+    expect(deps.duckImmediately).toHaveBeenCalledWith('Zone 1');
+    expect(deps.duckImmediately).toHaveBeenCalledWith('Zone 2');
+    const duckOrder = deps.duckImmediately.mock.invocationCallOrder[0];
+    const enqueueOrder = deps.queueEngine.enqueue.mock.invocationCallOrder[0];
+    expect(duckOrder).toBeLessThan(enqueueOrder);
+  });
+
+  test('marks every resolved zone as ducked on the queue engine after ducking', async () => {
+    const deps = makeDeps({ zones: ['Zone 1', 'Zone 2'] });
+
+    await triggerVog(deps, vogMessage);
+
+    expect(deps.queueEngine.markDucked).toHaveBeenCalledWith(['Zone 1', 'Zone 2']);
+    const duckOrder = deps.duckImmediately.mock.invocationCallOrder[0];
+    const markDuckedOrder = deps.queueEngine.markDucked.mock.invocationCallOrder[0];
+    expect(duckOrder).toBeLessThan(markDuckedOrder);
+  });
+
+  test('zero-zone VOG cue skips ducking entirely', async () => {
+    const deps = makeDeps({ zones: [] });
+
+    await triggerVog(deps, vogMessage);
+
+    expect(deps.duckImmediately).not.toHaveBeenCalled();
+    expect(deps.queueEngine.markDucked).not.toHaveBeenCalled();
+  });
+
+  test('a rejected duck call for one zone does not block ducking the others or firing the VOG cue', async () => {
+    const deps = makeDeps({ zones: ['Zone 1', 'Zone 2'] });
+    deps.duckImmediately.mockImplementation((zone) =>
+      zone === 'Zone 1' ? Promise.reject(new Error('duck cue denied')) : Promise.resolve()
+    );
+
+    const result = await triggerVog(deps, vogMessage);
+
+    expect(deps.duckImmediately).toHaveBeenCalledWith('Zone 1');
+    expect(deps.duckImmediately).toHaveBeenCalledWith('Zone 2');
+    expect(deps.queueEngine.markDucked).toHaveBeenCalledWith(['Zone 1', 'Zone 2']);
+    expect(result).toEqual({ fired: true, zones: ['Zone 1', 'Zone 2'] });
   });
 });

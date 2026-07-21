@@ -12,7 +12,7 @@ const eventLogger = createEventLogger(path.join(__dirname, '..', 'logs'));
 
 const core = createCore({
   dbPath: process.env.DB_PATH || path.join(__dirname, '..', 'data', 'schedule.db'),
-  zoneMapPath: path.join(__dirname, '..', 'config', 'zone-map.json'),
+  audioPatchMapPath: path.join(__dirname, '..', 'config', 'audio-patch-map.json'),
   qlabOscHost: process.env.QLAB_OSC_HOST || '127.0.0.1',
   qlabOscPort: Number(process.env.QLAB_OSC_PORT || 53000),
   localOscPort: Number(process.env.LOCAL_OSC_PORT || 53001),

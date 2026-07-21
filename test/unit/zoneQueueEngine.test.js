@@ -498,10 +498,266 @@ describe('ZoneQueueEngine', () => {
 
     await engine.enqueue(entry('a', ['Zone 1']));
     const all = engine.getRecentEvents();
-    expect(all.map((e) => e.event)).toEqual(['queued', 'fired']);
-    expect(all[1].entry.cueNumber).toBe('a');
+    expect(all.map((e) => e.event)).toEqual(['queued', 'duck_wait', 'fired']);
+    expect(all[2].entry.cueNumber).toBe('a');
 
     const sinceFuture = engine.getRecentEvents(new Date(Date.now() + 60000).toISOString());
     expect(sinceFuture).toEqual([]);
+  });
+
+  it('ducks a zone once a solo message admits, and unducks once it frees', async () => {
+    const protocol = fakeProtocol();
+    const onZoneTransition = jest.fn();
+    const engine = makeEngine(protocol, { onZoneTransition });
+
+    const promise = engine.enqueue(entry('a', ['Zone 1'], { durationSeconds: 10 }));
+    await jest.advanceTimersByTimeAsync(0);
+    await promise;
+
+    expect(onZoneTransition).toHaveBeenCalledWith('duck', 'Zone 1');
+    expect(onZoneTransition).not.toHaveBeenCalledWith('unduck', 'Zone 1');
+
+    await jest.advanceTimersByTimeAsync(10000); // durationSeconds elapses, zone frees
+    expect(onZoneTransition).toHaveBeenCalledWith('unduck', 'Zone 1');
+    expect(onZoneTransition).toHaveBeenCalledTimes(2); // exactly one duck, one unduck
+  });
+
+  it('does not unduck between two back-to-back messages in the same zone (no flicker)', async () => {
+    const protocol = fakeProtocol();
+    const onZoneTransition = jest.fn();
+    const engine = makeEngine(protocol, { onZoneTransition });
+
+    const pA = engine.enqueue(entry('a', ['Zone 1'], { durationSeconds: 10, dueAt: 0 }));
+    await jest.advanceTimersByTimeAsync(0);
+    await pA;
+
+    // Queued behind 'a' well before its duration elapses - the back-to-back case.
+    const pB = engine.enqueue(entry('b', ['Zone 1'], { durationSeconds: 10, dueAt: 1 }));
+
+    // Advance exactly to 'a' freeing - 'b' should be admitted in the very same _tryAdvance pass.
+    await jest.advanceTimersByTimeAsync(10000);
+    await pB;
+
+    const kinds = onZoneTransition.mock.calls.map(([kind]) => kind);
+    expect(kinds.filter((k) => k === 'duck')).toHaveLength(1); // only at 'a''s original admission
+    expect(kinds.filter((k) => k === 'unduck')).toHaveLength(0); // not between 'a' freeing and 'b' admitting
+
+    // Only once 'b' itself frees, with nothing left behind it, does the zone genuinely idle.
+    await jest.advanceTimersByTimeAsync(10000);
+    const kindsAfter = onZoneTransition.mock.calls.map(([kind]) => kind);
+    expect(kindsAfter.filter((k) => k === 'unduck')).toHaveLength(1);
+  });
+
+  it('ducks once (not twice) across a settle-window race, and does not unduck while still settling', async () => {
+    const protocol = fakeProtocol();
+    const onZoneTransition = jest.fn();
+    const engine = makeEngine(protocol, { admissionSettleMs: 50, onZoneTransition });
+
+    const p103 = engine.enqueue({ ...entry('sched-103', ['Zone 1'], { dueAt: 1000 }), cueNumber: '103' });
+    await jest.advanceTimersByTimeAsync(10);
+    const p101 = engine.enqueue({ ...entry('sched-101', ['Zone 1'], { dueAt: 1005 }), cueNumber: '101' });
+
+    expect(onZoneTransition).not.toHaveBeenCalled(); // still within the settle window
+
+    await jest.advanceTimersByTimeAsync(100);
+    await Promise.all([p103, p101]);
+
+    const kinds = onZoneTransition.mock.calls.map(([kind]) => kind);
+    expect(kinds.filter((k) => k === 'duck')).toHaveLength(1);
+    expect(kinds.filter((k) => k === 'unduck')).toHaveLength(0);
+  });
+
+  it('preemptZones does not itself trigger unduck', async () => {
+    const protocol = fakeProtocol();
+    const onZoneTransition = jest.fn();
+    const engine = makeEngine(protocol, { onZoneTransition });
+
+    const promise = engine.enqueue(entry('a', ['Zone 1'], { durationSeconds: 1000 }));
+    await jest.advanceTimersByTimeAsync(0);
+    await promise;
+    expect(onZoneTransition).toHaveBeenCalledWith('duck', 'Zone 1');
+
+    onZoneTransition.mockClear();
+    engine.preemptZones(['Zone 1']);
+
+    expect(onZoneTransition).not.toHaveBeenCalled();
+  });
+
+  it('never ducks/unducks a cue that resolves to zero zones', async () => {
+    const protocol = fakeProtocol();
+    const onZoneTransition = jest.fn();
+    const engine = makeEngine(protocol, { onZoneTransition });
+
+    const result = await engine.enqueue(entry('a', []));
+
+    expect(result.fired).toBe(true);
+    expect(onZoneTransition).not.toHaveBeenCalled();
+  });
+
+  it('markDucked lets a zone VOG ducked directly still unduck via the normal idle-check path', async () => {
+    const protocol = fakeProtocol();
+    const onZoneTransition = jest.fn();
+    const engine = makeEngine(protocol, { onZoneTransition });
+
+    engine.markDucked(['Zone 1']);
+    const result = await engine.enqueue(entry('a', ['Zone 1'], { durationSeconds: 10 }));
+
+    expect(result.fired).toBe(true);
+    // duck must not fire again here - markDucked already accounted for VOG's own direct duck.
+    expect(onZoneTransition).not.toHaveBeenCalledWith('duck', 'Zone 1');
+
+    await jest.advanceTimersByTimeAsync(10000);
+    expect(onZoneTransition).toHaveBeenCalledWith('unduck', 'Zone 1');
+  });
+
+  it('does not fire the message until the zone\'s duck cue is confirmed done', async () => {
+    const protocol = fakeProtocol();
+    let resolveDuck;
+    const onZoneTransition = jest.fn((kind) => {
+      if (kind === 'duck') return new Promise((resolve) => { resolveDuck = resolve; });
+      return Promise.resolve();
+    });
+    const engine = makeEngine(protocol, { onZoneTransition });
+
+    const promise = engine.enqueue(entry('a', ['Zone 1']));
+    await jest.advanceTimersByTimeAsync(0);
+
+    expect(protocol.playCue).not.toHaveBeenCalled(); // still waiting on the duck cue to finish
+
+    resolveDuck();
+    await jest.advanceTimersByTimeAsync(0);
+    await promise;
+
+    expect(protocol.playCue).toHaveBeenCalledWith('a');
+  });
+
+  it('fires the message anyway if the duck onZoneTransition hook rejects (best-effort)', async () => {
+    const protocol = fakeProtocol();
+    const onZoneTransition = jest.fn().mockRejectedValue(new Error('duck cue denied'));
+    const engine = makeEngine(protocol, { onZoneTransition });
+
+    const promise = engine.enqueue(entry('a', ['Zone 1']));
+    await jest.advanceTimersByTimeAsync(0);
+    const result = await promise;
+
+    expect(result.fired).toBe(true);
+    expect(protocol.playCue).toHaveBeenCalledWith('a');
+  });
+
+  it('does not fire the message if preempted while the duck-wait was still in flight', async () => {
+    const protocol = fakeProtocol();
+    let resolveDuck;
+    const onZoneTransition = jest.fn((kind) => {
+      if (kind === 'duck') return new Promise((resolve) => { resolveDuck = resolve; });
+      return Promise.resolve();
+    });
+    const onEvent = jest.fn();
+    const engine = makeEngine(protocol, { onZoneTransition, onEvent });
+
+    const promise = engine.enqueue(entry('a', ['Zone 1']));
+    await jest.advanceTimersByTimeAsync(0);
+
+    engine.preemptZones(['Zone 1']);
+    resolveDuck();
+    await jest.advanceTimersByTimeAsync(0);
+    const result = await promise;
+
+    expect(result.fired).toBe(false);
+    expect(protocol.playCue).not.toHaveBeenCalled();
+    expect(onEvent).toHaveBeenCalledWith('preempted_before_fire', expect.objectContaining({ id: 'a' }), undefined);
+  });
+
+  it('does not free the zone for new admission until the unduck cue is confirmed done', async () => {
+    const protocol = fakeProtocol();
+    let resolveUnduck;
+    const onZoneTransition = jest.fn((kind) => {
+      if (kind === 'unduck') return new Promise((resolve) => { resolveUnduck = resolve; });
+      return Promise.resolve();
+    });
+    const engine = makeEngine(protocol, { onZoneTransition });
+
+    const pA = engine.enqueue(entry('a', ['Zone 1'], { durationSeconds: 10 }));
+    await jest.advanceTimersByTimeAsync(0);
+    await pA;
+
+    await jest.advanceTimersByTimeAsync(10000); // 'a' frees - unduck is now in flight, unresolved
+
+    const pB = engine.enqueue(entry('b', ['Zone 1'], { dueAt: 1 }));
+    await jest.advanceTimersByTimeAsync(0);
+    expect(protocol.playCue).not.toHaveBeenCalledWith('b'); // must queue, not fire, mid-unduck
+
+    resolveUnduck();
+    await jest.advanceTimersByTimeAsync(0);
+    await pB;
+
+    expect(protocol.playCue).toHaveBeenCalledWith('b');
+  });
+
+  it('preempting a zone mid-unduck-wait clears the synthetic reservation cleanly', async () => {
+    const protocol = fakeProtocol();
+    let resolveUnduck;
+    const onZoneTransition = jest.fn((kind) => {
+      if (kind === 'unduck') return new Promise((resolve) => { resolveUnduck = resolve; });
+      return Promise.resolve();
+    });
+    const engine = makeEngine(protocol, { onZoneTransition });
+
+    const pA = engine.enqueue(entry('a', ['Zone 1'], { durationSeconds: 10 }));
+    await jest.advanceTimersByTimeAsync(0);
+    await pA;
+    await jest.advanceTimersByTimeAsync(10000); // frees - synthetic unduck marker now reserving the zone
+
+    expect(engine.getState().occupancy['Zone 1']).toBeDefined();
+
+    engine.preemptZones(['Zone 1']);
+    expect(engine.getState().occupancy['Zone 1']).toBeUndefined();
+
+    resolveUnduck(); // a late resolution must not throw or re-occupy the zone
+    await jest.advanceTimersByTimeAsync(0);
+    expect(engine.getState().occupancy['Zone 1']).toBeUndefined();
+  });
+
+  it('frees each zone of a multi-zone entry on its OWN discrete duration, not a shared one (Group cue case)', async () => {
+    const protocol = fakeProtocol();
+    const onZoneTransition = jest.fn();
+    const engine = makeEngine(protocol, { onZoneTransition });
+
+    // Models a Group cue whose Zone 1 child is 5s and Zone 2 child is 10s - QLab would
+    // report the group's own overall duration as 10s (the longest), but each zone should
+    // free on its OWN child's real duration.
+    const group = entry('group', ['Zone 1', 'Zone 2'], { durationSeconds: 10 });
+    group.durationSecondsByZone = { 'Zone 1': 5, 'Zone 2': 10 };
+    const promise = engine.enqueue(group);
+    await jest.advanceTimersByTimeAsync(0);
+    await promise;
+
+    await jest.advanceTimersByTimeAsync(5000);
+    expect(engine.getState().occupancy['Zone 1']).toBeUndefined(); // freed on its own 5s
+    expect(engine.getState().occupancy['Zone 2']).toBeDefined(); // still busy for its own 10s
+    expect(onZoneTransition).toHaveBeenCalledWith('unduck', 'Zone 1');
+    expect(onZoneTransition).not.toHaveBeenCalledWith('unduck', 'Zone 2');
+
+    await jest.advanceTimersByTimeAsync(5000);
+    expect(engine.getState().occupancy['Zone 2']).toBeUndefined();
+    expect(onZoneTransition).toHaveBeenCalledWith('unduck', 'Zone 2');
+  });
+
+  it('admits a new entry into a Group\'s shorter zone without waiting for the longer zone to clear', async () => {
+    const protocol = fakeProtocol();
+    const engine = makeEngine(protocol);
+
+    const group = entry('group', ['Zone 1', 'Zone 2'], { durationSeconds: 10, dueAt: 0 });
+    group.durationSecondsByZone = { 'Zone 1': 5, 'Zone 2': 10 };
+    const pGroup = engine.enqueue(group);
+    await jest.advanceTimersByTimeAsync(0);
+    await pGroup;
+
+    // Queued behind the group in Zone 1 only - should be admitted once Zone 1 (5s) frees,
+    // not held up by Zone 2's longer 10s.
+    const pNext = engine.enqueue(entry('next', ['Zone 1'], { dueAt: 1 }));
+
+    await jest.advanceTimersByTimeAsync(5000);
+    await pNext;
+    expect(protocol.playCue).toHaveBeenCalledWith('next');
   });
 });

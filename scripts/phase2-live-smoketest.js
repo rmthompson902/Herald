@@ -16,7 +16,7 @@ async function main() {
 
   console.log('thump():', await protocol.thump());
   console.log(`getDuration('${CUE}'):`, await protocol.getDuration(CUE));
-  console.log(`getLevels('${CUE}'):`, JSON.stringify(await protocol.getLevels(CUE)));
+  console.log(`getCuePatch('${CUE}'):`, await protocol.getCuePatch(CUE));
   console.log(`getUniqueId('${CUE}'):`, await protocol.getUniqueId(CUE));
 
   const cues = await protocol.listCues();
