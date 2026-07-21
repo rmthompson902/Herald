@@ -275,6 +275,28 @@ out.
       per-zone query omitted rather than throwing) and `zoneQueueEngine.test.js` (each zone
       of a multi-zone entry frees on its own duration; a queued single-zone entry admits
       without waiting for a longer sibling zone).
+    - **Third amendment**: the operator reported an audible ~half-second gap between a duck
+      cue's audio actually finishing and the message cue starting, even under the genuine
+      block-on-completion model above. Root cause: `qlabProtocol.playCue()` uses
+      `requestOptionalReply` with a 500ms timeout, because QLab is silent on a SUCCESSFUL
+      `/cue/{n}/start` (only replies on denial) - so a successful `playCue()` call always
+      takes its full 500ms to resolve. `duckDuration.js`'s `playCueAndWaitForDuration`
+      originally awaited that 500ms call before even querying the duck cue's duration and
+      starting the wait countdown - the duck audio itself started playing near-instantly
+      when the OSC message was sent, but the code didn't start counting its duration down
+      until ~500ms + a getDuration round trip later, padding every duck (and unduck) wait by
+      that amount beyond the cue's real length. Fixed by no longer awaiting `playCue()`
+      before querying duration: `playCue` is fired and `getDuration` queried concurrently,
+      and the wait is computed as the real duration minus however much time already elapsed
+      since the play command was actually sent (`remainingMs = durationSeconds*1000 -
+      (now() - startedAt)`), rather than a flat `durationSeconds*1000` added on top of both
+      round trips. 2 new unit tests in `duckDuration.test.js` (a slow-resolving `playCue`
+      doesn't pad the wait; a slow `getDuration` round trip that already exceeds the real
+      duration resolves immediately with no extra wait). All 146 unit tests pass.
+      Live-verified against the real running instance: the duck_wait-to-fired gap for cue
+      1101/Zone 1 dropped from a consistent ~2.508s (multiple pre-fix samples) to a
+      consistent ~2.004s (multiple post-fix samples) - a ~504ms reduction, matching the
+      removed 500ms tax almost exactly.
 
 ## Consequences
 

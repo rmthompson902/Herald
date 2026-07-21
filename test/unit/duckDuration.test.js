@@ -63,4 +63,41 @@ describe('playCueAndWaitForDuration', () => {
     await promise;
     expect(done).toBe(true);
   });
+
+  it("does not pad the wait by playCue's own slow resolution (e.g. the ~500ms optional-reply timeout QLab forces on a silent success)", async () => {
+    const protocol = fakeProtocol();
+    protocol.playCue.mockImplementation(() => new Promise((resolve) => setTimeout(resolve, 500)));
+    protocol.getDuration.mockResolvedValue(2);
+    let done = false;
+
+    const promise = playCueAndWaitForDuration(protocol, '1198').then(() => {
+      done = true;
+    });
+
+    await jest.advanceTimersByTimeAsync(0);
+    expect(protocol.playCue).toHaveBeenCalledWith('1198');
+
+    // The 2s duration is counted from when playCue was SENT, not from when its own slow
+    // promise resolves - so the whole wait should still land at ~2000ms, not 2000ms on top
+    // of playCue's separate 500ms.
+    await jest.advanceTimersByTimeAsync(1999);
+    expect(done).toBe(false);
+    await jest.advanceTimersByTimeAsync(1);
+    await promise;
+    expect(done).toBe(true);
+  });
+
+  it('resolves immediately if the getDuration round trip alone already used up the real duration', async () => {
+    const protocol = fakeProtocol();
+    protocol.getDuration.mockImplementation(() => new Promise((resolve) => setTimeout(() => resolve(1), 1500)));
+    let done = false;
+
+    const promise = playCueAndWaitForDuration(protocol, '1198').then(() => {
+      done = true;
+    });
+
+    await jest.advanceTimersByTimeAsync(1500);
+    await promise;
+    expect(done).toBe(true); // 1s duration already exceeded by the 1.5s query itself - no extra wait
+  });
 });
