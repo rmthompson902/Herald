@@ -67,13 +67,16 @@ describe('ZoneQueueEngine', () => {
   });
 
   it('frees every zone of a multi-zone entry on a failed playCue, not just one', async () => {
+    // Each zone of a multi-zone entry fires (and can fail) completely independently now -
+    // reject every zone's own playCue call to model a denial affecting the whole cue.
     const protocol = fakeProtocol();
-    protocol.playCue.mockRejectedValueOnce(new Error('denied'));
+    protocol.playCue.mockRejectedValue(new Error('denied'));
     const engine = makeEngine(protocol);
 
     await engine.enqueue(entry('a', ['Zone 1', 'Zone 2'], { durationSeconds: 1000 }));
     await jest.advanceTimersByTimeAsync(0);
 
+    protocol.playCue.mockResolvedValue(undefined); // the later entry's own attempt should succeed
     const laterResult = await engine.enqueue(entry('b', ['Zone 1', 'Zone 2'], { dueAt: 1 }));
     expect(laterResult.fired).toBe(true);
   });
@@ -259,32 +262,6 @@ describe('ZoneQueueEngine', () => {
     expect(order).toEqual(['occupant', '103', '101']);
   });
 
-  it('does not head-of-line-block a single-zone entry behind an unrelated multi-zone entry stuck on another zone', async () => {
-    // Reproduces a real reported bug: schedule 1 (cue 101, Zone 1 only), a "cue 2" schedule
-    // (cue 102, Zone 1 AND Zone 2), and schedule 3 (cue 103, Zone 2 only) all become due at
-    // once. Zone 2 is completely free for cue 103's entire wait - it should fire right away,
-    // not be stuck behind cue 102 in Zone 2's queue just because 102 < 103 sorts it first
-    // there, when cue 102 itself can't go yet (it's also waiting on the busy Zone 1).
-    const protocol = fakeProtocol();
-    const engine = makeEngine(protocol);
-
-    const p101 = engine.enqueue({ ...entry('sched-101', ['Zone 1'], { dueAt: 1000 }), cueNumber: '101' });
-    const p102 = engine.enqueue({
-      ...entry('sched-102', ['Zone 1', 'Zone 2'], { dueAt: 1000, durationSeconds: 100 }),
-      cueNumber: '102'
-    });
-    const p103 = engine.enqueue({ ...entry('sched-103', ['Zone 2'], { dueAt: 1000 }), cueNumber: '103' });
-
-    const [result101, result102, result103] = await Promise.all([p101, p102, p103]);
-
-    expect(result101.fired).toBe(true); // Zone 1 was free and only 101 needed it
-    expect(result103.fired).toBe(true); // Zone 2 was free and only 103 needed it - must not wait on 102
-    expect(result102.fired).toBe(false); // 102 needs both zones, both currently taken by 101/103
-
-    const order = protocol.playCue.mock.calls.map((call) => call[0]);
-    expect(order).toEqual(['101', '103']);
-  });
-
   it('settle window: still fires a lone entry into a free zone once the window elapses', async () => {
     const protocol = fakeProtocol();
     const engine = makeEngine(protocol, { admissionSettleMs: 50 });
@@ -354,21 +331,54 @@ describe('ZoneQueueEngine', () => {
     expect(order).toEqual(['occupant', 'q2', 'q3']);
   });
 
-  it('only admits a multi-zone entry once every one of its zones is free and it is at each queue front', async () => {
+  it('admits each zone of a multi-zone entry independently - one zone firing never waits on another', async () => {
+    // Zone 1 is free, Zone 2 is occupied - a multi-zone entry targeting both should still
+    // fire its Zone 1 portion immediately rather than waiting for Zone 2 too (supersedes the
+    // old "wait for every zone" admission rule - see ADR 0001 decision 4's amendment).
     const protocol = fakeProtocol();
     const engine = makeEngine(protocol);
 
     await engine.enqueue(entry('zone2-occupant', ['Zone 2'], { durationSeconds: 5 }));
-    // enqueue()'s own promise only reflects the FIRST admission attempt - since this entry
-    // can't be admitted yet (Zone 2 busy), it resolves quickly with {fired:false} and stays
-    // that way even though the entry goes on to fire later; only playCue/onEvent observe that.
-    const multiResult = await engine.enqueue(entry('vog-all', ['Zone 1', 'Zone 2'], { dueAt: 1 }));
-    expect(multiResult.fired).toBe(false); // Zone 1 is free but Zone 2 is occupied
-    expect(protocol.playCue).not.toHaveBeenCalledWith('vog-all');
+    const multi = entry('vog-all', ['Zone 1', 'Zone 2'], { dueAt: 1 });
+    multi.zoneDetails = {
+      'Zone 1': { cueNumber: 'vog-zone1' },
+      'Zone 2': { cueNumber: 'vog-zone2' }
+    };
+    const multiResult = await engine.enqueue(multi);
+
+    expect(multiResult.fired).toBe(false); // Zone 2's own portion is still waiting
+    expect(protocol.playCue).toHaveBeenCalledWith('vog-zone1'); // Zone 1's portion fired right away
+    expect(protocol.playCue).not.toHaveBeenCalledWith('vog-zone2');
 
     await jest.advanceTimersByTimeAsync(5000);
+    expect(protocol.playCue).toHaveBeenCalledWith('vog-zone2');
+  });
 
-    expect(protocol.playCue).toHaveBeenCalledWith('vog-all');
+  it('fires each zone of a multi-zone entry independently once THAT zone frees, even when unrelated single-zone entries already occupy every target zone (real reported scenario)', async () => {
+    // Reproduces the operator's exact report: a multi-zone Group cue triggered while
+    // single-zone messages are already independently playing in both of its target zones
+    // must not wait for the SLOWER of the two to finish - each zone's portion fires the
+    // instant that zone alone frees.
+    const protocol = fakeProtocol();
+    const engine = makeEngine(protocol);
+
+    await engine.enqueue(entry('zone1-occupant', ['Zone 1'], { durationSeconds: 5 }));
+    await engine.enqueue(entry('zone2-occupant', ['Zone 2'], { durationSeconds: 10 }));
+
+    const group = entry('group', ['Zone 1', 'Zone 2'], { dueAt: 1 });
+    group.zoneDetails = {
+      'Zone 1': { cueNumber: 'group-zone1', durationSeconds: 3 },
+      'Zone 2': { cueNumber: 'group-zone2', durationSeconds: 3 }
+    };
+    const groupResult = await engine.enqueue(group);
+    expect(groupResult.fired).toBe(false); // both zones were busy at enqueue time
+
+    await jest.advanceTimersByTimeAsync(5000); // Zone 1's occupant frees
+    expect(protocol.playCue).toHaveBeenCalledWith('group-zone1');
+    expect(protocol.playCue).not.toHaveBeenCalledWith('group-zone2'); // Zone 2's occupant (10s) still playing
+
+    await jest.advanceTimersByTimeAsync(5000); // Zone 2's occupant (10s total) now frees
+    expect(protocol.playCue).toHaveBeenCalledWith('group-zone2');
   });
 
   it('frees a confirmed zone early on a real /updates-confirmed stop instead of waiting out the fallback timer', async () => {
@@ -726,7 +736,7 @@ describe('ZoneQueueEngine', () => {
     // report the group's own overall duration as 10s (the longest), but each zone should
     // free on its OWN child's real duration.
     const group = entry('group', ['Zone 1', 'Zone 2'], { durationSeconds: 10 });
-    group.durationSecondsByZone = { 'Zone 1': 5, 'Zone 2': 10 };
+    group.zoneDetails = { 'Zone 1': { durationSeconds: 5 }, 'Zone 2': { durationSeconds: 10 } };
     const promise = engine.enqueue(group);
     await jest.advanceTimersByTimeAsync(0);
     await promise;
@@ -747,7 +757,7 @@ describe('ZoneQueueEngine', () => {
     const engine = makeEngine(protocol);
 
     const group = entry('group', ['Zone 1', 'Zone 2'], { durationSeconds: 10, dueAt: 0 });
-    group.durationSecondsByZone = { 'Zone 1': 5, 'Zone 2': 10 };
+    group.zoneDetails = { 'Zone 1': { durationSeconds: 5 }, 'Zone 2': { durationSeconds: 10 } };
     const pGroup = engine.enqueue(group);
     await jest.advanceTimersByTimeAsync(0);
     await pGroup;

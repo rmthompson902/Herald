@@ -2,9 +2,8 @@
 
 const {
   resolveZoneForLeafCue,
-  resolveZonesForCue,
   resolveZoneInfoForCue,
-  resolveDurationSecondsByZone,
+  resolveZoneDetailsForCue,
   findCueNode
 } = require('../../lib/zones/zoneResolver');
 const cueListsFixture = require('../fixtures/qlab-patch-cuelists.json');
@@ -37,11 +36,21 @@ const durationByCue = new Map([
   ['990102', 10]
 ]);
 
+// cueNumber -> its own QLab internal uniqueID, modeling each zone's specific child cue
+// needing its own distinct id (not the group's) so zoneQueueEngine can track/confirm each
+// zone's fire independently.
+const uniqueIdByCue = new Map([
+  ['1101', 'uid-1101'],
+  ['990101', 'uid-990101'],
+  ['990102', 'uid-990102']
+]);
+
 function fakeProtocol() {
   return {
     getCueLists: jest.fn().mockResolvedValue(cueListsFixture.data),
     getCuePatch: jest.fn((cueNumber) => Promise.resolve(patchByCue.get(cueNumber) ?? null)),
-    getDuration: jest.fn((cueNumber) => Promise.resolve(durationByCue.get(cueNumber)))
+    getDuration: jest.fn((cueNumber) => Promise.resolve(durationByCue.get(cueNumber))),
+    getUniqueId: jest.fn((cueNumber) => Promise.resolve(uniqueIdByCue.get(cueNumber)))
   };
 }
 
@@ -79,39 +88,6 @@ describe('findCueNode', () => {
   });
 });
 
-describe('resolveZonesForCue', () => {
-  it('resolves a leaf Audio cue to its single zone via the patch map', async () => {
-    const protocol = fakeProtocol();
-    await expect(resolveZonesForCue(protocol, patchMap, '1101')).resolves.toEqual(['Zone 1']);
-  });
-
-  it('resolves a leaf cue on an unmapped patch to zero zones', async () => {
-    const protocol = fakeProtocol();
-    await expect(resolveZonesForCue(protocol, patchMap, '1201')).resolves.toEqual([]);
-  });
-
-  it('resolves a Group cue as the union of its children in different zones', async () => {
-    const protocol = fakeProtocol();
-    const zones = await resolveZonesForCue(protocol, patchMap, '9901');
-    expect(zones.sort()).toEqual(['Zone 1', 'Zone 2']);
-  });
-
-  it('recurses into nested Groups (Group containing a Group containing a leaf cue)', async () => {
-    const protocol = fakeProtocol();
-    await expect(resolveZonesForCue(protocol, patchMap, '9902')).resolves.toEqual(['Zone 1']);
-  });
-
-  it('deduplicates a Group whose children all resolve to the same zone', async () => {
-    const protocol = fakeProtocol();
-    await expect(resolveZonesForCue(protocol, patchMap, '9903')).resolves.toEqual(['Zone 1']);
-  });
-
-  it('resolves to an empty array when the cue number is not found in the cue tree at all', async () => {
-    const protocol = fakeProtocol();
-    await expect(resolveZonesForCue(protocol, patchMap, 'does-not-exist')).resolves.toEqual([]);
-  });
-});
-
 describe('resolveZoneInfoForCue', () => {
   it('reports which specific child cue number provides each zone of a Group', async () => {
     const protocol = fakeProtocol();
@@ -129,40 +105,80 @@ describe('resolveZoneInfoForCue', () => {
   });
 });
 
-describe('resolveDurationSecondsByZone', () => {
-  it('resolves each zone of a Group cue to its OWN child\'s discrete duration, not the group\'s overall one', async () => {
+describe('resolveZoneDetailsForCue', () => {
+  it('resolves a leaf Audio cue to its single zone with its own cue number/duration/uniqueId', async () => {
     const protocol = fakeProtocol();
-    const result = await resolveDurationSecondsByZone(protocol, patchMap, '9901');
+    const { zones, zoneDetails } = await resolveZoneDetailsForCue(protocol, patchMap, '1101');
 
-    expect(result).toEqual({ 'Zone 1': 5, 'Zone 2': 10 });
-    expect(protocol.getDuration).toHaveBeenCalledWith('990101');
-    expect(protocol.getDuration).toHaveBeenCalledWith('990102');
-    expect(protocol.getDuration).not.toHaveBeenCalledWith('9901'); // never the group's own number
+    expect(zones).toEqual(['Zone 1']);
+    expect(zoneDetails).toEqual({
+      'Zone 1': { cueNumber: '1101', durationSeconds: 5, qlabInternalId: 'uid-1101' }
+    });
   });
 
-  it('resolves a leaf cue to { [its own zone]: its own duration }', async () => {
+  it('resolves a leaf cue on an unmapped patch to zero zones', async () => {
     const protocol = fakeProtocol();
-    await expect(resolveDurationSecondsByZone(protocol, patchMap, '1101')).resolves.toEqual({ 'Zone 1': 5 });
+    await expect(resolveZoneDetailsForCue(protocol, patchMap, '1201')).resolves.toEqual({ zones: [], zoneDetails: {} });
   });
 
-  it('omits a zone whose duration query fails, without throwing', async () => {
+  it('resolves a Group cue with each zone mapped to ITS OWN child cue/duration/uniqueId, never the group\'s own number', async () => {
+    const protocol = fakeProtocol();
+    const { zones, zoneDetails } = await resolveZoneDetailsForCue(protocol, patchMap, '9901');
+
+    expect(zones.sort()).toEqual(['Zone 1', 'Zone 2']);
+    expect(zoneDetails['Zone 1']).toEqual({ cueNumber: '990101', durationSeconds: 5, qlabInternalId: 'uid-990101' });
+    expect(zoneDetails['Zone 2']).toEqual({ cueNumber: '990102', durationSeconds: 10, qlabInternalId: 'uid-990102' });
+    expect(protocol.getDuration).not.toHaveBeenCalledWith('9901');
+    expect(protocol.getUniqueId).not.toHaveBeenCalledWith('9901');
+  });
+
+  it('recurses into nested Groups (Group containing a Group containing a leaf cue)', async () => {
+    const protocol = fakeProtocol();
+    const { zones } = await resolveZoneDetailsForCue(protocol, patchMap, '9902');
+    expect(zones).toEqual(['Zone 1']);
+  });
+
+  it('deduplicates a Group whose children all resolve to the same zone', async () => {
+    const protocol = fakeProtocol();
+    const { zones } = await resolveZoneDetailsForCue(protocol, patchMap, '9903');
+    expect(zones).toEqual(['Zone 1']);
+  });
+
+  it('resolves to no zones when the cue number is not found in the cue tree at all', async () => {
+    const protocol = fakeProtocol();
+    await expect(resolveZoneDetailsForCue(protocol, patchMap, 'does-not-exist')).resolves.toEqual({
+      zones: [],
+      zoneDetails: {}
+    });
+  });
+
+  it('keeps a zone (with its correctly-resolved cue number) even when that zone\'s own duration query fails, omitting only durationSeconds', async () => {
     const protocol = fakeProtocol();
     protocol.getDuration.mockImplementation((cueNumber) =>
       cueNumber === '990101' ? Promise.reject(new Error('timeout')) : Promise.resolve(durationByCue.get(cueNumber))
     );
 
-    await expect(resolveDurationSecondsByZone(protocol, patchMap, '9901')).resolves.toEqual({ 'Zone 2': 10 });
+    const { zones, zoneDetails } = await resolveZoneDetailsForCue(protocol, patchMap, '9901');
+    expect(zones.sort()).toEqual(['Zone 1', 'Zone 2']);
+    expect(zoneDetails['Zone 1']).toEqual({ cueNumber: '990101', durationSeconds: undefined, qlabInternalId: 'uid-990101' });
+    expect(zoneDetails['Zone 2']).toEqual({ cueNumber: '990102', durationSeconds: 10, qlabInternalId: 'uid-990102' });
   });
 
-  it('returns an empty object for a cue not found in the cue tree', async () => {
+  it('keeps a zone even when that zone\'s own uniqueId query fails, omitting only qlabInternalId', async () => {
     const protocol = fakeProtocol();
-    await expect(resolveDurationSecondsByZone(protocol, patchMap, 'does-not-exist')).resolves.toEqual({});
+    protocol.getUniqueId.mockImplementation((cueNumber) =>
+      cueNumber === '990101' ? Promise.reject(new Error('timeout')) : Promise.resolve(uniqueIdByCue.get(cueNumber))
+    );
+
+    const { zoneDetails } = await resolveZoneDetailsForCue(protocol, patchMap, '9901');
+    expect(zoneDetails['Zone 1'].qlabInternalId).toBeUndefined();
+    expect(zoneDetails['Zone 1'].durationSeconds).toBe(5);
   });
 
-  it('returns an empty object rather than throwing when the underlying getCueLists/tree resolution itself fails (e.g. concurrent schedules racing QLab for the same OSC reply)', async () => {
+  it('propagates (never swallows) a failure of the underlying getCueLists/tree resolution itself, since zone membership is safety-critical', async () => {
     const protocol = fakeProtocol();
     protocol.getCueLists.mockRejectedValue(new Error('OSC request timed out waiting for /reply/cueLists'));
 
-    await expect(resolveDurationSecondsByZone(protocol, patchMap, '9901')).resolves.toEqual({});
+    await expect(resolveZoneDetailsForCue(protocol, patchMap, '9901')).rejects.toThrow('timed out');
   });
 });

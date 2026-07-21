@@ -2,14 +2,13 @@
 
 const { triggerVog } = require('../../lib/vog/vogInterruptHandler');
 
-function makeDeps({ zones = ['Zone 1', 'Zone 2'], occupancy = {} } = {}) {
+function makeDeps({ zones = ['Zone 1', 'Zone 2'], zoneDetails = {}, occupancy = {} } = {}) {
   const qlabProtocol = {
     stopCue: jest.fn().mockResolvedValue(undefined),
     getDuration: jest.fn().mockResolvedValue(12),
     getUniqueId: jest.fn().mockResolvedValue('vog-uid')
   };
-  const resolveZonesForCue = jest.fn().mockResolvedValue(zones);
-  const resolveDurationSecondsByZone = jest.fn().mockResolvedValue({});
+  const resolveZoneDetailsForCue = jest.fn().mockResolvedValue({ zones, zoneDetails });
   const queueEngine = {
     getState: jest.fn().mockReturnValue({ occupancy, queued: {} }),
     preemptZones: jest.fn(),
@@ -17,7 +16,7 @@ function makeDeps({ zones = ['Zone 1', 'Zone 2'], occupancy = {} } = {}) {
     enqueue: jest.fn().mockResolvedValue({ fired: true })
   };
   const duckImmediately = jest.fn().mockResolvedValue(undefined);
-  return { qlabProtocol, resolveZonesForCue, resolveDurationSecondsByZone, queueEngine, duckImmediately };
+  return { qlabProtocol, resolveZoneDetailsForCue, queueEngine, duckImmediately };
 }
 
 const vogMessage = { id: 7, name: 'Evacuate All', qlabCueNumber: '900' };
@@ -105,6 +104,7 @@ describe('vogInterruptHandler.triggerVog', () => {
         cueNumber: '900',
         qlabInternalId: 'vog-uid',
         zones: ['Zone 1', 'Zone 2'],
+        zoneDetails: {},
         durationSeconds: 12,
         name: 'Evacuate All',
         source: 'vog'
@@ -113,16 +113,17 @@ describe('vogInterruptHandler.triggerVog', () => {
     expect(result).toEqual({ fired: true, zones: ['Zone 1', 'Zone 2'] });
   });
 
-  test('resolves and passes through each zone\'s own discrete duration (e.g. for a multi-zone Group cue)', async () => {
-    const deps = makeDeps({ zones: ['Zone 1', 'Zone 2'] });
-    deps.resolveDurationSecondsByZone.mockResolvedValue({ 'Zone 1': 5, 'Zone 2': 10 });
+  test('resolves and passes through each zone\'s own discrete play details (e.g. for a multi-zone Group cue)', async () => {
+    const zoneDetails = {
+      'Zone 1': { cueNumber: '901', durationSeconds: 5, qlabInternalId: 'uid-901' },
+      'Zone 2': { cueNumber: '902', durationSeconds: 10, qlabInternalId: 'uid-902' }
+    };
+    const deps = makeDeps({ zones: ['Zone 1', 'Zone 2'], zoneDetails });
 
     await triggerVog(deps, vogMessage);
 
-    expect(deps.resolveDurationSecondsByZone).toHaveBeenCalledWith('900');
-    expect(deps.queueEngine.enqueue).toHaveBeenCalledWith(
-      expect.objectContaining({ durationSecondsByZone: { 'Zone 1': 5, 'Zone 2': 10 } })
-    );
+    expect(deps.resolveZoneDetailsForCue).toHaveBeenCalledWith('900');
+    expect(deps.queueEngine.enqueue).toHaveBeenCalledWith(expect.objectContaining({ zoneDetails }));
   });
 
   test('a stopCue rejection for one occupant does not block stopping/preempting the rest', async () => {

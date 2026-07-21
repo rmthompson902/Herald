@@ -5,20 +5,30 @@
 // never authoritative). Failure here must never block a schedule save or startup - if
 // QLab is briefly unreachable, the schedule still saves/fires correctly, the cache just
 // stays stale until the next successful refresh.
+//
+// Also returns `zoneDetails` (each zone's own specific child cue number/duration/uniqueId -
+// see zoneResolver.resolveZoneDetailsForCue) alongside the cached summary, so callers that
+// need to enqueue a per-zone-independent fire (fn_on_due/fn_play_now/vogInterruptHandler)
+// get everything they need from this ONE call - no separate resolveDurationSecondsByZone
+// round trip, and no separate failure-tolerance layer needed on top: this function's
+// existing try/catch already converts any resolution failure (including a losing race on
+// the shared getCueLists() query) to `{ error }`, which every one of those callers already
+// checks before proceeding.
 async function refreshCueCache(core, qlabCueNumber) {
   try {
-    const [duration, zones, qlabInternalId] = await Promise.all([
+    const [duration, { zones, zoneDetails }, qlabInternalId] = await Promise.all([
       core.osc.protocol.getDuration(qlabCueNumber),
-      core.zones.resolveZonesForCue(qlabCueNumber),
+      core.zones.resolveZoneDetailsForCue(qlabCueNumber),
       core.osc.protocol.getUniqueId(qlabCueNumber)
     ]);
 
-    return core.db.cueCache.upsert(core.db.connection, {
+    const cached = core.db.cueCache.upsert(core.db.connection, {
       qlabCueNumber,
       qlabInternalId,
       durationSeconds: duration,
       zones
     });
+    return { ...cached, zoneDetails };
   } catch (err) {
     return { error: err.message };
   }
