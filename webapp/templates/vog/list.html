@@ -7,12 +7,18 @@
 {% block title %}VOG Messages - Sitewide Audio Messaging{% endblock %}
 
 {% block content %}
+{% set actions = [] %}
+{% if vog_messages %}
+    {% set actions = actions + [
+        {'type': 'button', 'id': 'enableAllVogBtn', 'text': 'Arm All', 'icon': 'fas fa-shield-alt', 'class': 'btn-outline-success', 'tooltip': 'Enable every VOG message'},
+        {'type': 'button', 'id': 'disableAllVogBtn', 'text': 'Disarm All', 'icon': 'fas fa-exclamation-triangle', 'class': 'btn-outline-warning', 'tooltip': 'Disable every VOG message'}
+    ] %}
+{% endif %}
+{% set actions = actions + [{'type': 'link', 'url': url_for('vog_new'), 'text': 'Add VOG Message', 'icon': 'fas fa-plus', 'class': 'btn-primary'}] %}
 {{ ph.page_header(
     'VOG Messages',
     'Voice of God: manually-triggered emergency messages. Triggering one stops every cue in its zones and plays the message.',
-    [{'type': 'link', 'url': url_for('vog_new'), 'text': 'Add VOG Message', 'icon': 'fas fa-plus', 'class': 'btn-primary'}],
-    [],
-    'fas fa-bullhorn'
+    actions
 ) }}
 
 {% if not vog_messages %}

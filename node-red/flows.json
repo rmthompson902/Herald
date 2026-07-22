@@ -754,6 +754,105 @@
     "wires": []
   },
   {
+    "id": "httpin_bulk_set_enabled_schedules",
+    "type": "http in",
+    "z": "tab_api",
+    "name": "POST /api/schedules/bulk-set-enabled",
+    "url": "/api/schedules/bulk-set-enabled",
+    "method": "post",
+    "upload": false,
+    "swaggerDoc": "",
+    "x": 220,
+    "y": 1120,
+    "wires": [
+      [
+        "fn_bulk_set_enabled_schedules"
+      ]
+    ]
+  },
+  {
+    "id": "fn_bulk_set_enabled_schedules",
+    "type": "function",
+    "z": "tab_api",
+    "name": "bulk setEnabled -> rebuildAll",
+    "func": "const core = global.get('core');\nconst cronSyncMessages = global.get('cronSyncMessages');\nconst enabled = !!(msg.payload && msg.payload.enabled);\n\nconst schedules = core.db.schedules.listAll(core.db.connection);\nfor (const schedule of schedules) {\n    core.db.schedules.setEnabled(core.db.connection, schedule.id, enabled);\n}\n\n// One rebuildAll rather than N syncOne calls - it always wipes every dynamic\n// cron-plus job first (idempotent by construction, same as fn_startup's own use),\n// so this stays correct however many schedules exist.\nconst directives = core.scheduling.cronSync.rebuildAll(core.db.connection);\nconst cronMsgs = cronSyncMessages.toCronPlusMessages(directives);\n\nmsg.statusCode = 200;\nmsg.payload = { status: 'success', updated: schedules.length, enabled };\nreturn [cronMsgs, msg];",
+    "outputs": 2,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 490,
+    "y": 1120,
+    "wires": [
+      [
+        "cronplus1"
+      ],
+      [
+        "httpresp_bulk_set_enabled_schedules"
+      ]
+    ]
+  },
+  {
+    "id": "httpresp_bulk_set_enabled_schedules",
+    "type": "http response",
+    "z": "tab_api",
+    "name": "",
+    "statusCode": "",
+    "headers": {},
+    "x": 750,
+    "y": 1120,
+    "wires": []
+  },
+  {
+    "id": "httpin_bulk_set_enabled_vog",
+    "type": "http in",
+    "z": "tab_api",
+    "name": "POST /api/vog-messages/bulk-set-enabled",
+    "url": "/api/vog-messages/bulk-set-enabled",
+    "method": "post",
+    "upload": false,
+    "swaggerDoc": "",
+    "x": 235,
+    "y": 1160,
+    "wires": [
+      [
+        "fn_bulk_set_enabled_vog"
+      ]
+    ]
+  },
+  {
+    "id": "fn_bulk_set_enabled_vog",
+    "type": "function",
+    "z": "tab_api",
+    "name": "bulk setEnabled VOG messages",
+    "func": "const core = global.get('core');\nconst enabled = !!(msg.payload && msg.payload.enabled);\n\n// VOG messages are manual-trigger only (no cron-plus sync involved), so this is\n// just a per-row setEnabled loop - unlike the schedules equivalent, there's no\n// scheduler state to rebuild afterward.\nconst vogMessages = core.db.vogMessages.listAll(core.db.connection);\nfor (const vogMessage of vogMessages) {\n    core.db.vogMessages.setEnabled(core.db.connection, vogMessage.id, enabled);\n}\n\nmsg.statusCode = 200;\nmsg.payload = { status: 'success', updated: vogMessages.length, enabled };\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 500,
+    "y": 1160,
+    "wires": [
+      [
+        "httpresp_bulk_set_enabled_vog"
+      ]
+    ]
+  },
+  {
+    "id": "httpresp_bulk_set_enabled_vog",
+    "type": "http response",
+    "z": "tab_api",
+    "name": "",
+    "statusCode": "",
+    "headers": {},
+    "x": 750,
+    "y": 1160,
+    "wires": []
+  },
+  {
     "id": "inject_periodic_cue_refresh",
     "type": "inject",
     "z": "tab1",

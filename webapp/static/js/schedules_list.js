@@ -126,4 +126,40 @@ document.addEventListener('DOMContentLoaded', () => {
             );
         });
     });
+
+    const enableAllBtn = document.getElementById('enableAllSchedulesBtn');
+    if (enableAllBtn) {
+        enableAllBtn.addEventListener('click', async () => {
+            const result = await ButtonStateManager.handleAsync(
+                enableAllBtn,
+                () => ScheduleAPI.bulkSetEnabled(true),
+                { loadingText: window.AppConstants.MESSAGES.LOADING }
+            );
+            if (result) {
+                window.showToast('Schedules Updated', window.AppConstants.MESSAGES.SCHEDULES_ENABLED_ALL, 'success');
+                setTimeout(() => window.location.reload(), 600);
+            }
+        });
+    }
+
+    const disableAllBtn = document.getElementById('disableAllSchedulesBtn');
+    if (disableAllBtn) {
+        disableAllBtn.addEventListener('click', () => {
+            ModalManager.showConfirmation(
+                'Disable All Schedules',
+                window.AppConstants.MESSAGES.CONFIRM_DISABLE_ALL_SCHEDULES,
+                async () => {
+                    const result = await ButtonStateManager.handleAsync(
+                        disableAllBtn,
+                        () => ScheduleAPI.bulkSetEnabled(false),
+                        { loadingText: window.AppConstants.MESSAGES.LOADING }
+                    );
+                    if (result) {
+                        window.showToast('Schedules Updated', window.AppConstants.MESSAGES.SCHEDULES_DISABLED_ALL, 'success');
+                        setTimeout(() => window.location.reload(), 600);
+                    }
+                }
+            );
+        });
+    }
 });

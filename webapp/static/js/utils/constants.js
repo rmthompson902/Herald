@@ -82,6 +82,9 @@ window.AppConstants = {
         SCHEDULE_TOGGLED: 'Schedule updated',
         SCHEDULE_PLAYED: 'Playing now',
         SCHEDULE_QUEUED: 'Zone busy - queued behind the current cue',
+        SCHEDULES_ENABLED_ALL: 'All schedules enabled',
+        SCHEDULES_DISABLED_ALL: 'All schedules disabled',
+        CONFIRM_DISABLE_ALL_SCHEDULES: 'Disable every schedule? None of them will fire until re-enabled.',
 
         // VOG operations
         VOG_ADDED: 'VOG message added',
@@ -90,6 +93,9 @@ window.AppConstants = {
         VOG_TRIGGERED: 'VOG message triggered',
         VOG_DISABLED_TOOLTIP: 'Enable this message before it can be triggered',
         VOG_ENABLED_TOOLTIP: 'Trigger this VOG message now',
+        VOG_ENABLED_ALL: 'All VOG messages enabled',
+        VOG_DISABLED_ALL: 'All VOG messages disabled',
+        CONFIRM_DISABLE_ALL_VOG: 'Disable every VOG message? None of them can be triggered until re-enabled.',
 
         // Cue cache
         CUE_REFRESHED: 'Cue data refreshed from QLab',

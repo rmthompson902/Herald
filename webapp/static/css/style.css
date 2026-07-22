@@ -180,6 +180,17 @@ body.app-theme {
     color: var(--accent-primary);
 }
 
+/* Page header title/subtitle (partials/components/page_header.html) - capped to a
+   readable line length so a long subtitle can't keep squeezing into the action buttons'
+   space and forcing them to wrap; it wraps onto its own line(s) within this width instead.
+   Every page's header goes through the same macro, so this cap is automatically uniform
+   everywhere rather than being set per page. min-width: 0 overrides the flex-item default
+   of min-width: auto, which would otherwise let the text ignore max-width and overflow. */
+.page-header-text {
+    max-width: 60ch;
+    min-width: 0;
+}
+
 /* Card styling */
 .card {
     background-color: var(--bg-card);

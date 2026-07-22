@@ -56,6 +56,9 @@ class NodeRedClient:
     async def toggle_schedule(self, schedule_id: int) -> dict:
         return await self._request("POST", f"/schedules/{schedule_id}/toggle")
 
+    async def bulk_set_enabled_schedules(self, enabled: bool) -> dict:
+        return await self._request("POST", "/schedules/bulk-set-enabled", json={"enabled": enabled})
+
     async def play_now(self, schedule_id: int) -> dict:
         return await self._request("POST", f"/schedules/{schedule_id}/play-now")
 
@@ -74,6 +77,9 @@ class NodeRedClient:
 
     async def toggle_vog_message(self, vog_id: int) -> dict:
         return await self._request("POST", f"/vog-messages/{vog_id}/toggle")
+
+    async def bulk_set_enabled_vog_messages(self, enabled: bool) -> dict:
+        return await self._request("POST", "/vog-messages/bulk-set-enabled", json={"enabled": enabled})
 
     async def trigger_vog_message(self, vog_id: int) -> dict:
         return await self._request("POST", f"/vog-messages/{vog_id}/trigger")

@@ -1,5 +1,5 @@
 {# Page header component - consistent page headers #}
-{% macro page_header(title, subtitle='', actions=[], breadcrumbs=[], icon='', show_refresh_cues=True) %}
+{% macro page_header(title, subtitle='', actions=[], breadcrumbs=[], show_refresh_cues=True) %}
 <div class="page-header mb-4">
     {% if breadcrumbs %}
     <nav aria-label="breadcrumb">
@@ -21,17 +21,15 @@
     </nav>
     {% endif %}
 
-    <div class="d-flex justify-content-between align-items-start">
-        <div>
-            <h1 class="h2 mb-1">
-                {% if icon %}<i class="{{ icon }} me-2"></i>{% endif %}{{ title }}
-            </h1>
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+        <div class="page-header-text">
+            <h1 class="h2 mb-1">{{ title }}</h1>
             {% if subtitle %}
             <p class="text-muted mb-0">{{ subtitle }}</p>
             {% endif %}
         </div>
 
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 flex-shrink-0">
             {% if show_refresh_cues %}
             <button type="button" class="btn btn-outline-secondary" id="refreshCuesBtn"
                     data-bs-toggle="tooltip" data-bs-placement="bottom"
@@ -90,6 +88,6 @@
 {% endmacro %}
 
 {# Simple page header without actions #}
-{% macro simple_page_header(title, subtitle='', icon='') %}
-    {{ page_header(title, subtitle, [], [], icon) }}
+{% macro simple_page_header(title, subtitle='') %}
+    {{ page_header(title, subtitle, [], []) }}
 {% endmacro %}

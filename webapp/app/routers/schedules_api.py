@@ -31,6 +31,19 @@ async def next_occurrences():
     return from_node_red_result(result)
 
 
+@router.post("/bulk-set-enabled")
+async def bulk_set_enabled(payload: dict):
+    # Registered before the /{schedule_id} routes below so Starlette's route matching
+    # can't ever treat "bulk-set-enabled" as a schedule_id (same reasoning as
+    # next_occurrences() above).
+    enabled = bool(payload.get("enabled"))
+    try:
+        result = await node_red_client.bulk_set_enabled_schedules(enabled)
+    except NodeRedUnavailableError as exc:
+        return error_response(str(exc), code=503)
+    return from_node_red_result(result)
+
+
 @router.post("")
 async def create_schedule(payload: dict):
     try:

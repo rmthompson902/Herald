@@ -175,6 +175,15 @@ class ScheduleAPI extends APIClient {
     }
 
     /**
+     * Sets every schedule's enabled flag to the same value in one call.
+     * @param {boolean} enabled
+     * @returns {Promise} - API response
+     */
+    static async bulkSetEnabled(enabled) {
+        return this.post('/api/schedules/bulk-set-enabled', { enabled });
+    }
+
+    /**
      * @param {string|number} scheduleId
      * @returns {Promise} - API response
      */
@@ -223,6 +232,15 @@ class VogAPI extends APIClient {
      */
     static async toggleVogMessage(vogId) {
         return this.post(`/api/vog-messages/${vogId}/toggle`);
+    }
+
+    /**
+     * Sets every VOG message's enabled flag to the same value in one call.
+     * @param {boolean} enabled
+     * @returns {Promise} - API response
+     */
+    static async bulkSetEnabled(enabled) {
+        return this.post('/api/vog-messages/bulk-set-enabled', { enabled });
     }
 
     /**

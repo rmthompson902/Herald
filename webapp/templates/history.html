@@ -7,7 +7,7 @@
 {% block content %}
 {{ ph.page_header('Event History', 'Most recent 200 lines from today\'s event log. Refreshes automatically.', [
     {'type': 'button', 'id': 'refreshLogBtn', 'text': 'Refresh Log Entries', 'icon': 'fas fa-sync-alt', 'class': 'btn-outline-secondary', 'tooltip': 'Reload the latest log entries now'}
-], [], 'fas fa-list', False) }}
+], [], False) }}
 
 <div id="historyLogContainer">
     {% if not entries %}

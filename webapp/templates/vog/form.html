@@ -7,9 +7,7 @@
 {{ ph.page_header(
     'Edit VOG Message' if vog_message else 'Add VOG Message',
     'Manual-trigger only - VOG messages never run on a schedule.',
-    [{'type': 'link', 'url': url_for('vog_list'), 'text': 'Back to VOG Messages', 'icon': 'fas fa-arrow-left', 'class': 'btn-secondary'}],
-    [],
-    'fas fa-bullhorn'
+    [{'type': 'link', 'url': url_for('vog_list'), 'text': 'Back to VOG Messages', 'icon': 'fas fa-arrow-left', 'class': 'btn-secondary'}]
 ) }}
 
 <div class="card">

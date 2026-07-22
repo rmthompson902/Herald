@@ -54,4 +54,40 @@ document.addEventListener('DOMContentLoaded', () => {
             );
         });
     });
+
+    const enableAllBtn = document.getElementById('enableAllVogBtn');
+    if (enableAllBtn) {
+        enableAllBtn.addEventListener('click', async () => {
+            const result = await ButtonStateManager.handleAsync(
+                enableAllBtn,
+                () => VogAPI.bulkSetEnabled(true),
+                { loadingText: window.AppConstants.MESSAGES.LOADING }
+            );
+            if (result) {
+                window.showToast('VOG Messages Updated', window.AppConstants.MESSAGES.VOG_ENABLED_ALL, 'success');
+                setTimeout(() => window.location.reload(), 600);
+            }
+        });
+    }
+
+    const disableAllBtn = document.getElementById('disableAllVogBtn');
+    if (disableAllBtn) {
+        disableAllBtn.addEventListener('click', () => {
+            ModalManager.showConfirmation(
+                'Disarm All VOG Messages',
+                window.AppConstants.MESSAGES.CONFIRM_DISABLE_ALL_VOG,
+                async () => {
+                    const result = await ButtonStateManager.handleAsync(
+                        disableAllBtn,
+                        () => VogAPI.bulkSetEnabled(false),
+                        { loadingText: window.AppConstants.MESSAGES.LOADING }
+                    );
+                    if (result) {
+                        window.showToast('VOG Messages Updated', window.AppConstants.MESSAGES.VOG_DISABLED_ALL, 'success');
+                        setTimeout(() => window.location.reload(), 600);
+                    }
+                }
+            );
+        });
+    }
 });

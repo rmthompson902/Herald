@@ -6,22 +6,28 @@
 {% block title %}Schedules - Sitewide Audio Messaging{% endblock %}
 
 {% block content %}
+{% set actions = [] %}
+{% if has_schedules %}
+    {% set actions = actions + [
+        {'type': 'button', 'id': 'enableAllSchedulesBtn', 'text': 'Enable All', 'icon': 'fas fa-toggle-on', 'class': 'btn-outline-success', 'tooltip': 'Enable every schedule'},
+        {'type': 'button', 'id': 'disableAllSchedulesBtn', 'text': 'Disable All', 'icon': 'fas fa-toggle-off', 'class': 'btn-outline-secondary', 'tooltip': 'Disable every schedule'}
+    ] %}
+{% endif %}
+{% set actions = actions + [{'type': 'link', 'url': url_for('schedule_new'), 'text': 'Add Schedule', 'icon': 'fas fa-plus', 'class': 'btn-primary'}] %}
 {{ ph.page_header(
     'Schedules',
     'Recurring audio messages, one table per zone - each zone plays independently.',
-    [{'type': 'link', 'url': url_for('schedule_new'), 'text': 'Add Schedule', 'icon': 'fas fa-plus', 'class': 'btn-primary'}],
-    [],
-    'fas fa-calendar-alt'
+    actions
 ) }}
 
 {% if not has_schedules %}
     {{ es.empty_state('calendar-plus', 'No schedules yet', 'Add a schedule to start playing recurring messages across a zone.', 'Add Schedule', url_for('schedule_new')) }}
 {% else %}
     {% for zone in zone_names %}
-        {{ st.schedules_table(zone, 'volume-up', schedules_by_zone[zone], cue_cache_by_number, 'No schedules target ' + zone + ' yet.') }}
+        {{ st.schedules_table(zone, schedules_by_zone[zone], cue_cache_by_number, 'No schedules target ' + zone + ' yet.') }}
     {% endfor %}
     {% if unassigned_schedules %}
-        {{ st.schedules_table('Not Yet Assigned', 'question-circle', unassigned_schedules, cue_cache_by_number, 'Nothing here.') }}
+        {{ st.schedules_table('Not Yet Assigned', unassigned_schedules, cue_cache_by_number, 'Nothing here.') }}
     {% endif %}
 {% endif %}
 {% endblock %}

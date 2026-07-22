@@ -7,9 +7,7 @@
 {{ ph.page_header(
     'Edit Schedule' if schedule else 'Add Schedule',
     'Fires ' + schedule.qlabCueNumber + ' on a recurring interval.' if schedule else 'Play a QLab cue on a recurring interval, within an optional time window.',
-    [{'type': 'link', 'url': url_for('schedules_list'), 'text': 'Back to Schedules', 'icon': 'fas fa-arrow-left', 'class': 'btn-secondary'}],
-    [],
-    'fas fa-calendar-alt'
+    [{'type': 'link', 'url': url_for('schedules_list'), 'text': 'Back to Schedules', 'icon': 'fas fa-arrow-left', 'class': 'btn-secondary'}]
 ) }}
 
 <div class="card">
