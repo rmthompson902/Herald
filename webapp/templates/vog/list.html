@@ -26,23 +26,23 @@
 {% else %}
 <div class="card">
     <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
+        <table class="table table-hover align-middle mb-0 sortable-table" data-default-sort-key="cue" data-default-sort-type="number">
             <thead>
                 <tr>
-                    <th>Name</th>
-                    <th>Cue</th>
-                    <th>Zones</th>
-                    <th>Status</th>
+                    <th class="sortable-column" data-sort-key="name" data-sort-type="text">Name</th>
+                    <th class="sortable-column" data-sort-key="cue" data-sort-type="number">Cue</th>
+                    <th class="sortable-column" data-sort-key="zones" data-sort-type="text">Zones</th>
+                    <th class="sortable-column" data-sort-key="status" data-sort-type="text">Status</th>
                     <th class="text-end">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for vog_message in vog_messages %}
                 {% set cue = cue_cache_by_number.get(vog_message.qlabCueNumber) %}
-                <tr>
+                <tr class="sortable-row">
                     <td>{{ vog_message.name }}</td>
-                    <td><code>{{ vog_message.qlabCueNumber }}</code></td>
-                    <td>
+                    <td data-sort-value="{{ vog_message.qlabCueNumber }}"><code>{{ vog_message.qlabCueNumber }}</code></td>
+                    <td data-sort-value="{{ (cue.zones|join(', ')) if cue and cue.zones else '' }}">
                         {% if cue and cue.zones %}
                             {% for zone in cue.zones %}<span class="badge bg-secondary me-1">{{ zone }}</span>{% endfor %}
                         {% else %}

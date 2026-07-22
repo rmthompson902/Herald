@@ -16,15 +16,15 @@ Usage:
         <h5 class="mb-0">{{ title }}</h5>
     </div>
     <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
+        <table class="table table-hover align-middle mb-0 sortable-table" data-default-sort-key="cue" data-default-sort-type="number">
             <thead>
                 <tr>
-                    <th>Name</th>
-                    <th>Cue</th>
-                    <th>Duration</th>
-                    <th>Timing</th>
+                    <th class="sortable-column" data-sort-key="name" data-sort-type="text">Name</th>
+                    <th class="sortable-column" data-sort-key="cue" data-sort-type="number">Cue</th>
+                    <th class="sortable-column" data-sort-key="duration" data-sort-type="number">Duration</th>
+                    <th class="sortable-column" data-sort-key="timing" data-sort-type="number">Timing</th>
                     <th>Next Fire</th>
-                    <th>Status</th>
+                    <th class="sortable-column" data-sort-key="status" data-sort-type="text">Status</th>
                     <th class="text-end">Actions</th>
                 </tr>
             </thead>
@@ -34,17 +34,17 @@ Usage:
                 {% else %}
                 {% for schedule in schedules %}
                 {% set cue = cue_cache_by_number.get(schedule.qlabCueNumber) %}
-                <tr>
+                <tr class="sortable-row">
                     <td>{{ schedule.name }}</td>
-                    <td><code>{{ schedule.qlabCueNumber }}</code></td>
-                    <td>
+                    <td data-sort-value="{{ schedule.qlabCueNumber }}"><code>{{ schedule.qlabCueNumber }}</code></td>
+                    <td data-sort-value="{{ cue.durationSeconds if cue and cue.durationSeconds is not none else '' }}">
                         {% if cue and cue.durationSeconds is not none %}
                             {{ '%.1f'|format(cue.durationSeconds) }}s
                         {% else %}
                             <span class="text-muted">&mdash;</span>
                         {% endif %}
                     </td>
-                    <td>
+                    <td data-sort-value="{{ schedule.intervalSeconds }}">
                         every {{ schedule.intervalSeconds }}s
                         {% if schedule.startTime and schedule.endTime %}
                             &middot; {{ schedule.startTime }}&ndash;{{ schedule.endTime }}

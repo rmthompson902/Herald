@@ -1,7 +1,11 @@
 /**
  * Schedules list page - wires up play-now, enable/disable toggle, and
  * delete row actions to the ScheduleAPI (see static/js/utils/api-client.js).
+ * Column-sort behavior for the per-zone tables lives in the shared
+ * static/js/utils/sortable-tables.js, not here - it wires itself up on any
+ * page with a `.sortable-table`, VOG's list page included.
  */
+
 /**
  * @param {string|null} iso - occurrence timestamp, or null if this schedule has none upcoming
  * @returns {string} - e.g. "in 12s (2:34:07 PM)", or a muted dash if there's nothing next

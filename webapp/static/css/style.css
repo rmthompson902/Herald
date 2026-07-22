@@ -414,6 +414,17 @@ body.app-theme {
     font-weight: 600;
 }
 
+/* Clickable column headers (see static/js/schedules_list.js) - no sort-direction icon by
+   design, just the standard clickable-header affordance. */
+.sortable-column {
+    cursor: pointer;
+    user-select: none;
+}
+
+.sortable-column:hover {
+    color: var(--text-primary);
+}
+
 .table td {
     border-color: var(--border-color);
 }
