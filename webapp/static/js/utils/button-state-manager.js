@@ -4,7 +4,14 @@
  */
 class ButtonStateManager {
     /**
-     * Set button to loading state
+     * Set button to loading state. An icon-only button (edit/delete/toggle/play,
+     * etc.) is just disabled while loading - its icon does not spin, since a
+     * spin only means something for an actual refresh/reload action. A
+     * text button gets a genuine loading spinner (Bootstrap's spinner-border)
+     * in place of its label, which already serves as that button's real
+     * "in progress" indicator - the refresh buttons (Refresh Cue Data, Refresh
+     * Log Entries) are text buttons and get this for free, no special-casing
+     * needed.
      * @param {HTMLElement} button - The button element
      * @param {string} loadingText - Text to display during loading
      */
@@ -17,12 +24,7 @@ class ButtonStateManager {
         const isIconOnlyButton = button.classList.contains('action-btn-notext') ||
                                  button.classList.contains('btn-square');
 
-        if (isIconOnlyButton) {
-            const icon = button.querySelector('i.fas');
-            if (icon) {
-                icon.classList.add('fa-spin');
-            }
-        } else {
+        if (!isIconOnlyButton) {
             button.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>${loadingText}`;
         }
 
@@ -36,11 +38,6 @@ class ButtonStateManager {
      */
     static reset(button) {
         if (!button) return;
-
-        const icon = button.querySelector('i.fas');
-        if (icon) {
-            icon.classList.remove('fa-spin');
-        }
 
         if (button.dataset.originalContent) {
             button.innerHTML = button.dataset.originalContent;
@@ -75,10 +72,6 @@ class ButtonStateManager {
 
         if (isIconOnlyButton) {
             button.innerHTML = '<i class="fas fa-check text-success"></i>';
-            const icon = button.querySelector('i.fas');
-            if (icon) {
-                icon.classList.remove('fa-spin');
-            }
         } else {
             button.innerHTML = `<i class="fas fa-check me-1"></i> ${successText}`;
             button.classList.add('btn-success');
@@ -116,10 +109,6 @@ class ButtonStateManager {
 
         if (isIconOnlyButton) {
             button.innerHTML = '<i class="fas fa-times text-danger"></i>';
-            const icon = button.querySelector('i.fas');
-            if (icon) {
-                icon.classList.remove('fa-spin');
-            }
         } else {
             button.innerHTML = `<i class="fas fa-times me-1"></i> ${errorText}`;
             button.classList.add('btn-danger');
