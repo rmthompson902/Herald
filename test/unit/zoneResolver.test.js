@@ -116,9 +116,35 @@ describe('resolveZoneDetailsForCue', () => {
     });
   });
 
-  it('resolves a leaf cue on an unmapped patch to zero zones', async () => {
+  it('resolves a leaf cue on an unmapped patch to zero zones, surfaced in unmappedLeafCues', async () => {
     const protocol = fakeProtocol();
-    await expect(resolveZoneDetailsForCue(protocol, patchMap, '1201')).resolves.toEqual({ zones: [], zoneDetails: {} });
+    await expect(resolveZoneDetailsForCue(protocol, patchMap, '1201')).resolves.toEqual({
+      zones: [],
+      zoneDetails: {},
+      unmappedLeafCues: [{ cueNumber: '1201', patchId: 2 }]
+    });
+  });
+
+  it('does NOT surface a cue with no patch assignment at all in unmappedLeafCues (distinct from an unmapped patch)', async () => {
+    const protocol = fakeProtocol();
+    protocol.getCuePatch = jest.fn().mockResolvedValue(null);
+    const { unmappedLeafCues } = await resolveZoneDetailsForCue(protocol, patchMap, '1101');
+    expect(unmappedLeafCues).toEqual([]);
+  });
+
+  it('aggregates unmappedLeafCues across a Group whose children are a mix of mapped and unmapped patches', async () => {
+    const protocol = fakeProtocol();
+    // 990101 -> patch 1 (Zone 1, mapped), 990102 -> patch 3 (Zone 2, mapped) per the shared
+    // fixture - reuse that structure but swap in an unmapped patch for one child to model
+    // a real mixed Group without needing a new cue-tree fixture.
+    protocol.getCuePatch = jest.fn((cueNumber) => {
+      if (cueNumber === '990102') return Promise.resolve(2); // unmapped Music patch
+      return Promise.resolve(patchByCue.get(cueNumber) ?? null);
+    });
+
+    const { zones, unmappedLeafCues } = await resolveZoneDetailsForCue(protocol, patchMap, '9901');
+    expect(zones).toEqual(['Zone 1']);
+    expect(unmappedLeafCues).toEqual([{ cueNumber: '990102', patchId: 2 }]);
   });
 
   it('resolves a Group cue with each zone mapped to ITS OWN child cue/duration/uniqueId, never the group\'s own number', async () => {
@@ -148,7 +174,8 @@ describe('resolveZoneDetailsForCue', () => {
     const protocol = fakeProtocol();
     await expect(resolveZoneDetailsForCue(protocol, patchMap, 'does-not-exist')).resolves.toEqual({
       zones: [],
-      zoneDetails: {}
+      zoneDetails: {},
+      unmappedLeafCues: []
     });
   });
 
