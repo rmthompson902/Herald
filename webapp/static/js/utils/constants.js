@@ -100,6 +100,12 @@ window.AppConstants = {
         // Cue cache
         CUE_REFRESHED: 'Cue data refreshed from QLab',
 
+        // Zone operations
+        ZONE_ADDED: 'Zone added - taking effect immediately, no restart needed',
+        ZONE_UPDATED: 'Zone updated - taking effect immediately, no restart needed',
+        ZONE_REMOVED: 'Zone deleted',
+        CONFIRM_DELETE_ZONE: 'Delete this zone? Messages routed to it will stop ducking/queueing until it (or a matching one) is re-added.',
+
         // Validation messages
         REQUIRED_FIELD: 'This field is required',
         INVALID_TIME_FORMAT: 'Enter a time as HH:MM (24-hour)',

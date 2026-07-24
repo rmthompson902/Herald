@@ -105,16 +105,47 @@ async def history_page(request: Request):
     return templates.TemplateResponse(request, "history.html", {"entries": entries})
 
 
-@router.get("/status", name="status_page")
-async def status_page(request: Request):
+@router.get("/settings", name="settings_page")
+async def settings_page(request: Request):
+    # Connection status and zone config are both read live from Node-RED - zones have no
+    # SQLite row at all (config/audio-patch-map.json, kept live via core.zones.reload(), is
+    # the sole source of truth), so both sections degrade together, gracefully, if Node-RED
+    # is unreachable.
     try:
         health = await node_red_client.get_health()
+        zones_result = await node_red_client.get_zones()
+        patches_result = await node_red_client.get_zone_patches()
         node_red_reachable = True
     except NodeRedUnavailableError:
         health = None
+        zones_result = None
+        patches_result = None
         node_red_reachable = False
+
+    zones = zones_result.get("zones", []) if zones_result else []
+    patches = patches_result.get("patches", []) if patches_result else []
+    patch_name_by_id = {p["patchId"]: p["name"] for p in patches}
+    for zone in zones:
+        zone["patchName"] = patch_name_by_id.get(zone["messagingPatchId"])
+
     return templates.TemplateResponse(
         request,
-        "status.html",
-        {"health": health, "node_red_reachable": node_red_reachable},
+        "settings.html",
+        {"health": health, "node_red_reachable": node_red_reachable, "zones": zones},
     )
+
+
+@router.get("/zones/new", name="zone_new")
+async def zone_new(request: Request):
+    return templates.TemplateResponse(request, "zones/form.html", {"zone": None})
+
+
+@router.get("/zones/{zone_name}/edit", name="zone_edit")
+async def zone_edit(request: Request, zone_name: str):
+    try:
+        result = await node_red_client.get_zones()
+        zones = result.get("zones", [])
+    except NodeRedUnavailableError:
+        zones = []
+    zone = next((z for z in zones if z["zoneName"] == zone_name), None)
+    return templates.TemplateResponse(request, "zones/form.html", {"zone": zone})

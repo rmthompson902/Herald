@@ -990,5 +990,293 @@
     "x": 720,
     "y": 1260,
     "wires": []
+  },
+  {
+    "id": "httpin_get_zones",
+    "type": "http in",
+    "z": "tab_api",
+    "name": "GET /api/zones",
+    "url": "/api/zones",
+    "method": "get",
+    "upload": false,
+    "swaggerDoc": "",
+    "x": 180,
+    "y": 1400,
+    "wires": [
+      [
+        "fn_get_zones"
+      ]
+    ]
+  },
+  {
+    "id": "fn_get_zones",
+    "type": "function",
+    "z": "tab_api",
+    "name": "listZones (live config)",
+    "func": "const core = global.get('core');\nconst zonesAdmin = global.get('zonesAdmin');\n\nmsg.statusCode = 200;\nmsg.payload = { status: 'success', zones: zonesAdmin.getZonesSnapshot(core) };\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 460,
+    "y": 1400,
+    "wires": [
+      [
+        "httpresp_get_zones"
+      ]
+    ]
+  },
+  {
+    "id": "httpresp_get_zones",
+    "type": "http response",
+    "z": "tab_api",
+    "name": "",
+    "statusCode": "",
+    "headers": {},
+    "x": 720,
+    "y": 1400,
+    "wires": []
+  },
+  {
+    "id": "httpin_zone_patches",
+    "type": "http in",
+    "z": "tab_api",
+    "name": "GET /api/zones/patches",
+    "url": "/api/zones/patches",
+    "method": "get",
+    "upload": false,
+    "swaggerDoc": "",
+    "x": 180,
+    "y": 1440,
+    "wires": [
+      [
+        "fn_zone_patches"
+      ]
+    ]
+  },
+  {
+    "id": "fn_zone_patches",
+    "type": "function",
+    "z": "tab_api",
+    "name": "getAudioPatches (live OSC)",
+    "func": "const core = global.get('core');\n\nreturn (async () => {\n    try {\n        const patches = await core.osc.protocol.getAudioPatches();\n        // 1-based index, matching /cue/{n}/patch's own indexing convention\n        const withIds = patches.map((patch, i) => ({ patchId: String(i + 1), name: patch.name }));\n        msg.statusCode = 200;\n        msg.payload = { status: 'success', patches: withIds };\n    } catch (err) {\n        msg.statusCode = 503;\n        msg.payload = { status: 'error', message: err.message };\n    }\n    return msg;\n})();",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 460,
+    "y": 1440,
+    "wires": [
+      [
+        "httpresp_zone_patches"
+      ]
+    ]
+  },
+  {
+    "id": "httpresp_zone_patches",
+    "type": "http response",
+    "z": "tab_api",
+    "name": "",
+    "statusCode": "",
+    "headers": {},
+    "x": 720,
+    "y": 1440,
+    "wires": []
+  },
+  {
+    "id": "httpin_zone_discover",
+    "type": "http in",
+    "z": "tab_api",
+    "name": "GET /api/zones/discover",
+    "url": "/api/zones/discover",
+    "method": "get",
+    "upload": false,
+    "swaggerDoc": "",
+    "x": 180,
+    "y": 1480,
+    "wires": [
+      [
+        "fn_zone_discover"
+      ]
+    ]
+  },
+  {
+    "id": "fn_zone_discover",
+    "type": "function",
+    "z": "tab_api",
+    "name": "discover zone from a reference cue number",
+    "func": "const core = global.get('core');\nconst deriveZoneSuggestion = global.get('deriveZoneSuggestion');\nconst cueNumber = msg.req.query.cueNumber;\n\nif (!cueNumber) {\n    msg.statusCode = 400;\n    msg.payload = { status: 'error', message: 'cueNumber query parameter is required' };\n    return msg;\n}\n\nreturn (async () => {\n    // A live patch lookup can fail for reasons that have nothing to do with the\n    // convention-based suggestion below (the cue doesn't exist yet, it's a Group\n    // with no /patch of its own, QLab is briefly unreachable) - none of that should\n    // block the naming-convention autofill, which needs nothing from QLab at all.\n    // patchId simply comes back null in that case; this endpoint only ever 5xxs on\n    // its own malformed input, never on QLab denying/timing out a query.\n    let patchId = null;\n    try {\n        const rawPatchId = await core.osc.protocol.getCuePatch(cueNumber);\n        patchId = (rawPatchId === null || rawPatchId === undefined) ? null : String(rawPatchId);\n    } catch (err) {\n        patchId = null;\n    }\n\n    const suggestion = { patchId, ...(deriveZoneSuggestion(cueNumber) || {}) };\n\n    msg.statusCode = 200;\n    msg.payload = { status: 'success', ...suggestion };\n    return msg;\n})();",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 460,
+    "y": 1480,
+    "wires": [
+      [
+        "httpresp_zone_discover"
+      ]
+    ]
+  },
+  {
+    "id": "httpresp_zone_discover",
+    "type": "http response",
+    "z": "tab_api",
+    "name": "",
+    "statusCode": "",
+    "headers": {},
+    "x": 720,
+    "y": 1480,
+    "wires": []
+  },
+  {
+    "id": "httpin_create_zone",
+    "type": "http in",
+    "z": "tab_api",
+    "name": "POST /api/zones",
+    "url": "/api/zones",
+    "method": "post",
+    "upload": false,
+    "swaggerDoc": "",
+    "x": 180,
+    "y": 1520,
+    "wires": [
+      [
+        "fn_create_zone"
+      ]
+    ]
+  },
+  {
+    "id": "fn_create_zone",
+    "type": "function",
+    "z": "tab_api",
+    "name": "create zone -> validate -> save -> reload",
+    "func": "const core = global.get('core');\nconst zonesAdmin = global.get('zonesAdmin');\nconst p = msg.payload || {};\n\nif (!p.zoneName || typeof p.zoneName !== 'string' || !p.zoneName.trim()) {\n    msg.statusCode = 400;\n    msg.payload = { status: 'error', message: 'zoneName is required' };\n    return msg;\n}\n\nif (core.zones.config.has(p.zoneName)) {\n    msg.statusCode = 409;\n    msg.payload = { status: 'error', message: `Zone \"${p.zoneName}\" already exists` };\n    return msg;\n}\n\nconst zones = zonesAdmin.buildZonesObject(core);\nzones[p.zoneName] = {\n    messagingPatchId: p.messagingPatchId,\n    duckCueNumber: p.duckCueNumber,\n    unduckCueNumber: p.unduckCueNumber\n};\n\ntry {\n    core.zones.save(zones);\n} catch (err) {\n    msg.statusCode = 400;\n    msg.payload = { status: 'error', message: err.message };\n    return msg;\n}\n\nmsg.statusCode = 201;\nmsg.payload = { status: 'success', zoneName: p.zoneName };\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 460,
+    "y": 1520,
+    "wires": [
+      [
+        "httpresp_create_zone"
+      ]
+    ]
+  },
+  {
+    "id": "httpresp_create_zone",
+    "type": "http response",
+    "z": "tab_api",
+    "name": "",
+    "statusCode": "",
+    "headers": {},
+    "x": 720,
+    "y": 1520,
+    "wires": []
+  },
+  {
+    "id": "httpin_update_zone",
+    "type": "http in",
+    "z": "tab_api",
+    "name": "PUT /api/zones/:zoneName",
+    "url": "/api/zones/:zoneName",
+    "method": "put",
+    "upload": false,
+    "swaggerDoc": "",
+    "x": 180,
+    "y": 1560,
+    "wires": [
+      [
+        "fn_update_zone"
+      ]
+    ]
+  },
+  {
+    "id": "fn_update_zone",
+    "type": "function",
+    "z": "tab_api",
+    "name": "update zone -> validate -> save -> reload",
+    "func": "const core = global.get('core');\nconst zonesAdmin = global.get('zonesAdmin');\nconst zoneName = msg.req.params.zoneName;\nconst p = msg.payload || {};\n\nif (!core.zones.config.has(zoneName)) {\n    msg.statusCode = 404;\n    msg.payload = { status: 'error', message: `Zone \"${zoneName}\" not found` };\n    return msg;\n}\n\nconst zones = zonesAdmin.buildZonesObject(core);\nzones[zoneName] = {\n    messagingPatchId: p.messagingPatchId,\n    duckCueNumber: p.duckCueNumber,\n    unduckCueNumber: p.unduckCueNumber\n};\n\ntry {\n    core.zones.save(zones);\n} catch (err) {\n    msg.statusCode = 400;\n    msg.payload = { status: 'error', message: err.message };\n    return msg;\n}\n\nmsg.statusCode = 200;\nmsg.payload = { status: 'success', zoneName };\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 460,
+    "y": 1560,
+    "wires": [
+      [
+        "httpresp_update_zone"
+      ]
+    ]
+  },
+  {
+    "id": "httpresp_update_zone",
+    "type": "http response",
+    "z": "tab_api",
+    "name": "",
+    "statusCode": "",
+    "headers": {},
+    "x": 720,
+    "y": 1560,
+    "wires": []
+  },
+  {
+    "id": "httpin_delete_zone",
+    "type": "http in",
+    "z": "tab_api",
+    "name": "DELETE /api/zones/:zoneName",
+    "url": "/api/zones/:zoneName",
+    "method": "delete",
+    "upload": false,
+    "swaggerDoc": "",
+    "x": 180,
+    "y": 1600,
+    "wires": [
+      [
+        "fn_delete_zone"
+      ]
+    ]
+  },
+  {
+    "id": "fn_delete_zone",
+    "type": "function",
+    "z": "tab_api",
+    "name": "delete zone -> validate -> save -> reload",
+    "func": "const core = global.get('core');\nconst zonesAdmin = global.get('zonesAdmin');\nconst zoneName = msg.req.params.zoneName;\n\nif (!core.zones.config.has(zoneName)) {\n    msg.statusCode = 404;\n    msg.payload = { status: 'error', message: `Zone \"${zoneName}\" not found` };\n    return msg;\n}\n\nconst zones = zonesAdmin.buildZonesObject(core);\ndelete zones[zoneName];\n\ntry {\n    core.zones.save(zones);\n} catch (err) {\n    msg.statusCode = 400;\n    msg.payload = { status: 'error', message: err.message };\n    return msg;\n}\n\nmsg.statusCode = 200;\nmsg.payload = { status: 'success', zoneName };\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 460,
+    "y": 1600,
+    "wires": [
+      [
+        "httpresp_delete_zone"
+      ]
+    ]
+  },
+  {
+    "id": "httpresp_delete_zone",
+    "type": "http response",
+    "z": "tab_api",
+    "name": "",
+    "statusCode": "",
+    "headers": {},
+    "x": 720,
+    "y": 1600,
+    "wires": []
   }
 ]

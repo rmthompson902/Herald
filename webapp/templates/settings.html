@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% import "partials/components/page_header.html" as ph %}
+{% import "partials/components/status_badge.html" as sb %}
+{% import "partials/components/empty_state.html" as es %}
+{% import "partials/components/action_button.html" as ab %}
+
+{% block title %}Settings - Sitewide Audio Messaging{% endblock %}
+
+{% block content %}
+{{ ph.page_header(
+    'Settings',
+    'QLab connection status and zone configuration (Messaging Audio Patch + duck/unduck cues). Zone changes take effect immediately - no restart needed.',
+    [{'type': 'link', 'url': url_for('zone_new'), 'text': 'Add Zone', 'icon': 'fas fa-plus', 'class': 'btn-primary'}],
+    [],
+    False
+) }}
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">Zones</h5>
+    </div>
+    {% if not node_red_reachable %}
+        <div class="card-body text-muted mb-0">Zone configuration can't be loaded or edited while Node-RED is unreachable.</div>
+    {% elif not zones %}
+        <div class="card-body">
+            {{ es.empty_state('map-marker-alt', 'No zones configured yet', 'Add a zone to route messages and duck background music for a QLab Audio Patch.', 'Add Zone', action_url=url_for('zone_new')) }}
+        </div>
+    {% else %}
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Zone</th>
+                    <th>Messaging Patch</th>
+                    <th>Duck Cue</th>
+                    <th>Unduck Cue</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for zone in zones %}
+                <tr>
+                    <td>{{ zone.zoneName }}</td>
+                    <td>
+                        <code>{{ zone.messagingPatchId }}</code>
+                        {% if zone.patchName %}<span class="text-muted"> &mdash; {{ zone.patchName }}</span>{% endif %}
+                    </td>
+                    <td><code>{{ zone.duckCueNumber }}</code></td>
+                    <td><code>{{ zone.unduckCueNumber }}</code></td>
+                    <td class="text-end">
+                        <div class="d-inline-flex gap-1">
+                            <a href="{{ url_for('zone_edit', zone_name=zone.zoneName) }}" class="btn action-btn action-btn-notext btn-outline-info" data-bs-toggle="tooltip" data-bs-title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            {{ ab.action_button('delete', 'trash', '', 'Delete', data_attrs={'zone-name': zone.zoneName}, classes='delete-zone-btn') }}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">Connection Status</h5>
+    </div>
+    <div class="card-body">
+        {% if not node_red_reachable %}
+            <div class="alert alert-danger mb-0" id="nodeRedUnreachableAlert">
+                <i class="fas fa-times-circle me-2"></i>
+                Node-RED is unreachable. The scheduling engine is not running, so nothing will fire.
+            </div>
+        {% else %}
+            <div class="d-flex gap-3 align-items-center" id="statusBadges">
+                {{ sb.connection_status_badge(health.state == 'connected' if health else False) }}
+                {{ sb.armed_status_badge(health.armed if health else False) }}
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', path='js/status.js') }}"></script>
+<script src="{{ url_for('static', path='js/zones_list.js') }}"></script>
+{% endblock %}

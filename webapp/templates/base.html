@@ -51,9 +51,9 @@ Block areas for child templates: title, additional_css, content, scripts
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {% if request.url.path == '/status' %}active{% endif %}"
-                           href="{{ url_for('status_page') }}">
-                            <i class="fas fa-heartbeat me-1"></i> Connection Status
+                        <a class="nav-link {% if request.url.path == '/settings' or request.url.path.startswith('/zones') %}active{% endif %}"
+                           href="{{ url_for('settings_page') }}">
+                            <i class="fas fa-cog me-1"></i> Settings
                         </a>
                     </li>
                 </ul>

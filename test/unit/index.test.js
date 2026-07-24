@@ -30,3 +30,123 @@ describe('createCore', () => {
     core.db.connection.close();
   });
 });
+
+function writeTempPatchMap(obj) {
+  const filePath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'qlab-sched-test-patchmap-')), 'audio-patch-map.json');
+  fs.writeFileSync(filePath, JSON.stringify(obj));
+  return filePath;
+}
+
+describe('core.zones.reload', () => {
+  it('updates the existing patchToZone/zoneConfig Map objects in place, without replacing their references', () => {
+    const patchMapPath = writeTempPatchMap({
+      zones: { 'Zone 1': { messagingPatchId: '1', duckCueNumber: '1198', unduckCueNumber: '1199' } }
+    });
+
+    const core = createCore({
+      dbPath: tempDbPath(),
+      audioPatchMapPath: patchMapPath,
+      qlabOscHost: '127.0.0.1',
+      qlabOscPort: 53000,
+      localOscPort: 53002
+    });
+
+    const patchToZoneRef = core.zones.patchToZone;
+    const zoneConfigRef = core.zones.config;
+
+    expect(patchToZoneRef.get('1')).toBe('Zone 1');
+    expect(patchToZoneRef.has('3')).toBe(false);
+
+    // Simulate a save through the Zones admin UI having rewritten the file directly
+    fs.writeFileSync(patchMapPath, JSON.stringify({
+      zones: {
+        'Zone 1': { messagingPatchId: '1', duckCueNumber: '1198', unduckCueNumber: '1199' },
+        'Zone 2': { messagingPatchId: '3', duckCueNumber: '2198', unduckCueNumber: '2199' }
+      }
+    }));
+
+    core.zones.reload();
+
+    // Same Map objects - every closure that already captured one of these two references
+    // (onZoneTransition, duckImmediately, resolveZoneDetailsForCue) sees this update for free
+    expect(core.zones.patchToZone).toBe(patchToZoneRef);
+    expect(core.zones.config).toBe(zoneConfigRef);
+    expect(patchToZoneRef.get('3')).toBe('Zone 2');
+    expect(zoneConfigRef.get('Zone 2')).toEqual({ duckCueNumber: '2198', unduckCueNumber: '2199' });
+
+    core.db.connection.close();
+  });
+
+  it('leaves the current in-memory config untouched if the reload reads an invalid file', () => {
+    const patchMapPath = writeTempPatchMap({
+      zones: { 'Zone 1': { messagingPatchId: '1', duckCueNumber: '1198', unduckCueNumber: '1199' } }
+    });
+
+    const core = createCore({
+      dbPath: tempDbPath(),
+      audioPatchMapPath: patchMapPath,
+      qlabOscHost: '127.0.0.1',
+      qlabOscPort: 53000,
+      localOscPort: 53003
+    });
+
+    fs.writeFileSync(patchMapPath, JSON.stringify({ zones: {} })); // invalid: no zones
+
+    expect(() => core.zones.reload()).toThrow(/no zones found/);
+    expect(core.zones.patchToZone.get('1')).toBe('Zone 1'); // untouched by the failed reload
+
+    core.db.connection.close();
+  });
+});
+
+describe('core.zones.save', () => {
+  it('validates, writes, and reloads in one call', () => {
+    const patchMapPath = writeTempPatchMap({
+      zones: { 'Zone 1': { messagingPatchId: '1', duckCueNumber: '1198', unduckCueNumber: '1199' } }
+    });
+
+    const core = createCore({
+      dbPath: tempDbPath(),
+      audioPatchMapPath: patchMapPath,
+      qlabOscHost: '127.0.0.1',
+      qlabOscPort: 53000,
+      localOscPort: 53004
+    });
+
+    core.zones.save({
+      'Zone 1': { messagingPatchId: '1', duckCueNumber: '1198', unduckCueNumber: '1199' },
+      'Zone 2': { messagingPatchId: '3', duckCueNumber: '2198', unduckCueNumber: '2199' }
+    });
+
+    expect(core.zones.patchToZone.get('3')).toBe('Zone 2');
+    expect(JSON.parse(fs.readFileSync(patchMapPath, 'utf8')).zones['Zone 2']).toBeDefined();
+
+    core.db.connection.close();
+  });
+
+  it('throws and reloads nothing when the given zones object is invalid', () => {
+    const patchMapPath = writeTempPatchMap({
+      zones: { 'Zone 1': { messagingPatchId: '1', duckCueNumber: '1198', unduckCueNumber: '1199' } }
+    });
+
+    const core = createCore({
+      dbPath: tempDbPath(),
+      audioPatchMapPath: patchMapPath,
+      qlabOscHost: '127.0.0.1',
+      qlabOscPort: 53000,
+      localOscPort: 53005
+    });
+
+    expect(() =>
+      core.zones.save({
+        'Zone 1': { messagingPatchId: '1', duckCueNumber: '1198', unduckCueNumber: '1199' },
+        'Zone 2': { messagingPatchId: '1', duckCueNumber: '2198', unduckCueNumber: '2199' } // duplicate patch id
+      })
+    ).toThrow(/claimed by more than one zone/);
+
+    expect(core.zones.config.has('Zone 2')).toBe(false);
+    expect(JSON.parse(fs.readFileSync(patchMapPath, 'utf8')).zones['Zone 2']).toBeUndefined();
+
+    core.db.connection.close();
+  });
+});

@@ -9,6 +9,7 @@ unhandled exception up into a router.
 """
 
 from typing import Any, Optional
+from urllib.parse import quote
 
 import httpx
 
@@ -97,6 +98,27 @@ class NodeRedClient:
     async def get_queue_events(self, since: Optional[str] = None) -> dict:
         params = {"since": since} if since else None
         return await self._request("GET", "/queue/events", params=params)
+
+    # Zones (see lib/zones/audioPatchMap.js) - the only manual config in the system. Every
+    # write here hot-reloads Node-RED's in-memory zone config immediately (core.zones.reload()),
+    # no restart needed.
+    async def get_zones(self) -> dict:
+        return await self._request("GET", "/zones")
+
+    async def get_zone_patches(self) -> dict:
+        return await self._request("GET", "/zones/patches")
+
+    async def discover_zone(self, cue_number: str) -> dict:
+        return await self._request("GET", "/zones/discover", params={"cueNumber": cue_number})
+
+    async def create_zone(self, data: dict) -> dict:
+        return await self._request("POST", "/zones", json=data)
+
+    async def update_zone(self, zone_name: str, data: dict) -> dict:
+        return await self._request("PUT", f"/zones/{quote(zone_name, safe='')}", json=data)
+
+    async def delete_zone(self, zone_name: str) -> dict:
+        return await self._request("DELETE", f"/zones/{quote(zone_name, safe='')}")
 
 
 node_red_client = NodeRedClient()

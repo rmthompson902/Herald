@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% import "partials/components/page_header.html" as ph %}
+
+{% block title %}{{ 'Edit Zone' if zone else 'Add Zone' }} - Sitewide Audio Messaging{% endblock %}
+
+{% block content %}
+{{ ph.page_header(
+    'Edit Zone' if zone else 'Add Zone',
+    'Changes take effect immediately - no Node-RED restart needed.',
+    [{'type': 'link', 'url': url_for('settings_page'), 'text': 'Back to Settings', 'icon': 'fas fa-arrow-left', 'class': 'btn-secondary'}],
+    [],
+    False
+) }}
+
+<div class="card">
+    <div class="card-body">
+        <form id="zoneForm" data-editing="{{ 'true' if zone else 'false' }}">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="zone_name" class="form-label">Zone Name</label>
+                    <input type="text" class="form-control" id="zone_name" name="zone_name" required
+                           value="{{ zone.zoneName if zone else '' }}"
+                           {% if zone %}readonly{% endif %}
+                           placeholder="e.g. Zone 4">
+                    {% if zone %}
+                    <div class="form-text">Zone names can't be renamed here - delete and re-add to rename.</div>
+                    {% endif %}
+                </div>
+
+                {% if not zone %}
+                <div class="col-md-6">
+                    <label for="reference_cue_number" class="form-label">Reference cue number <span class="text-muted">(optional)</span></label>
+                    <input type="text" class="form-control" id="reference_cue_number"
+                           autocomplete="off" placeholder="e.g. 4101 - a real message cue in this zone">
+                    <div class="form-text">Looks up this cue's QLab Audio Patch live and fills in the fields below.</div>
+                </div>
+                {% endif %}
+
+                <div class="col-md-6">
+                    <label for="messaging_patch_id" class="form-label">Messaging Audio Patch</label>
+                    <select class="form-select" id="messaging_patch_id" name="messaging_patch_id" required
+                            data-current-patch-id="{{ zone.messagingPatchId if zone else '' }}">
+                        <option value="">Loading patches&hellip;</option>
+                    </select>
+                </div>
+
+                <div class="col-md-3">
+                    <label for="duck_cue_number" class="form-label">Duck Cue Number</label>
+                    <input type="text" class="form-control" id="duck_cue_number" name="duck_cue_number" required
+                           value="{{ zone.duckCueNumber if zone else '' }}">
+                </div>
+
+                <div class="col-md-3">
+                    <label for="unduck_cue_number" class="form-label">Unduck Cue Number</label>
+                    <input type="text" class="form-control" id="unduck_cue_number" name="unduck_cue_number" required
+                           value="{{ zone.unduckCueNumber if zone else '' }}">
+                </div>
+            </div>
+
+            <div class="mt-4 d-flex gap-2">
+                <button type="submit" class="btn btn-primary" id="zoneSubmitBtn">
+                    <i class="fas fa-check me-1"></i> {{ 'Save Changes' if zone else 'Add Zone' }}
+                </button>
+                <a href="{{ url_for('settings_page') }}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', path='js/zones_form.js') }}"></script>
+{% endblock %}

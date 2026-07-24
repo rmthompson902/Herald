@@ -289,3 +289,57 @@ class HistoryAPI extends APIClient {
         return this.get('/api/history/entries');
     }
 }
+
+/**
+ * Zones admin API operations - config/audio-patch-map.json, the one manual zone config in
+ * the system (see lib/zones/audioPatchMap.js). Every write here takes effect immediately in
+ * Node-RED (hot-reload) - no restart needed.
+ */
+class ZoneAPI extends APIClient {
+    /** @returns {Promise} - { zones: [{ zoneName, messagingPatchId, duckCueNumber, unduckCueNumber }] } */
+    static async getAllZones() {
+        return this.get('/api/zones');
+    }
+
+    /** @returns {Promise} - { patches: [{ patchId, name }] }, live from QLab's own patch list */
+    static async getPatches() {
+        return this.get('/api/zones/patches');
+    }
+
+    /**
+     * Live patch lookup for a reference cue number, plus a naming-convention-based
+     * suggestion (zoneName/duckCueNumber/unduckCueNumber) when the cue number matches the
+     * venue's "{zone}1{id}" convention - fields are simply omitted when it doesn't match, not
+     * an error.
+     * @param {string} cueNumber
+     * @returns {Promise} - { patchId, zoneName?, duckCueNumber?, unduckCueNumber? }
+     */
+    static async discover(cueNumber) {
+        return this.get(`/api/zones/discover?cueNumber=${encodeURIComponent(cueNumber)}`);
+    }
+
+    /**
+     * @param {Object} zoneData - { zone_name, messaging_patch_id, duck_cue_number, unduck_cue_number }
+     * @returns {Promise} - API response
+     */
+    static async createZone(zoneData) {
+        return this.post('/api/zones', zoneData);
+    }
+
+    /**
+     * @param {string} zoneName
+     * @param {Object} zoneData - { messaging_patch_id, duck_cue_number, unduck_cue_number }
+     * @returns {Promise} - API response
+     */
+    static async updateZone(zoneName, zoneData) {
+        return this.put(`/api/zones/${encodeURIComponent(zoneName)}`, zoneData);
+    }
+
+    /**
+     * @param {string} zoneName
+     * @returns {Promise} - API response
+     */
+    static async removeZone(zoneName) {
+        return this.delete(`/api/zones/${encodeURIComponent(zoneName)}`);
+    }
+}

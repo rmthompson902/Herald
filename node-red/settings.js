@@ -5,6 +5,8 @@ const { createCore } = require('../lib/index');
 const { createEventLogger } = require('../lib/log/eventLogger');
 const cronSyncMessages = require('./lib/applyCronSyncDirectives');
 const { refreshCueCache, refreshAllReferencedCues } = require('./lib/refreshCueCache');
+const zonesAdmin = require('./lib/zonesAdmin');
+const { deriveZoneSuggestion } = require('../lib/zones/zoneNamingConvention');
 
 // Daily-rotating, 30-day-retained plain-text business event log (see plan's Logging
 // section) - this is what the webapp's /history page tails directly.
@@ -38,7 +40,9 @@ module.exports = {
     core,
     cronSyncMessages,
     refreshCueCache,
-    refreshAllReferencedCues
+    refreshAllReferencedCues,
+    zonesAdmin,
+    deriveZoneSuggestion
   },
 
   logging: {
