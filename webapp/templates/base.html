@@ -100,6 +100,16 @@ Block areas for child templates: title, additional_css, content, scripts
             showToast('Queued Message Played', data.message, 'info');
         });
 
+        // A fire that looked successful at request time (the operator saw "Playing") can
+        // still turn out to have never actually produced audio - e.g. a cue whose Audio
+        // Patch has no live output device attached. QLab doesn't deny the OSC start in that
+        // case, so this can only be caught after the fact (see zoneQueueEngine.js's
+        // suspected_playback_failure event) - this is that after-the-fact correction,
+        // page-agnostic for the same reason queue_notification is.
+        socket.on('playback_failure', (data) => {
+            showToast('Possible Playback Failure', data.message, 'error');
+        });
+
         /**
          * Global toast notification system, consistent across every page.
          * @param {string} title

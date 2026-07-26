@@ -383,16 +383,81 @@ describe('ZoneQueueEngine', () => {
 
   it('frees a confirmed zone early on a real /updates-confirmed stop instead of waiting out the fallback timer', async () => {
     const protocol = fakeProtocol();
-    const engine = makeEngine(protocol);
+    const onEvent = jest.fn();
+    const engine = makeEngine(protocol, { onEvent });
 
     await engine.enqueue(entry('a', ['Zone 1'], { durationSeconds: 100, qlabInternalId: 'uid-a' }));
     const bPromise = engine.enqueue(entry('b', ['Zone 1'], { dueAt: 1 }));
 
+    // Realistic jitter only (fade tail/rounding - see ADR decision 3) - confirmed stopped a
+    // few seconds ahead of the full 100s estimate, not near-instantly, so this is a genuine
+    // completion, not a suspected failure (see the dedicated suspected_playback_failure tests
+    // below for that case).
+    await jest.advanceTimersByTimeAsync(95000);
     protocol.getIsRunningByUniqueId.mockResolvedValueOnce(false); // confirms 'a' has actually stopped
     await engine.handleQlabUpdate('uid-a');
     await bPromise;
 
     expect(protocol.playCue).toHaveBeenCalledWith('b');
+    expect(onEvent).toHaveBeenCalledWith('zone_freed', expect.objectContaining({ id: 'a' }), { zone: 'Zone 1' });
+    expect(onEvent).not.toHaveBeenCalledWith('suspected_playback_failure', expect.anything(), expect.anything());
+  });
+
+  it('flags a confirmed stop as suspected_playback_failure when it lands far short of the known duration', async () => {
+    // Mirrors a real investigated failure: a cue's Audio Patch had its output device
+    // disconnected. QLab never denies the /cue/{n}/start OSC command itself in that case -
+    // the only signal is an /updates push + a live isRunning re-query confirming "not
+    // running" within ~50-80ms, versus this same cue's real ~9.3s duration every other time.
+    const protocol = fakeProtocol();
+    const onEvent = jest.fn();
+    const engine = makeEngine(protocol, { onEvent });
+
+    await engine.enqueue(entry('a', ['Zone 1'], { durationSeconds: 9.292, qlabInternalId: 'uid-a' }));
+
+    await jest.advanceTimersByTimeAsync(50);
+    protocol.getIsRunningByUniqueId.mockResolvedValueOnce(false);
+    await engine.handleQlabUpdate('uid-a');
+
+    expect(onEvent).toHaveBeenCalledWith('suspected_playback_failure', expect.objectContaining({ id: 'a' }), {
+      zone: 'Zone 1',
+      elapsedMs: 50,
+      expectedMs: 9292
+    });
+    expect(onEvent).not.toHaveBeenCalledWith('zone_freed', expect.anything(), expect.anything());
+  });
+
+  it('does not flag a suspected failure when the cue has no known duration (fallback default in use)', async () => {
+    // An unresolved/unknown duration falls back to a deliberately generous 30s safety net
+    // (see the plan/ADR) - not a real expectation, so it must never be used as the baseline
+    // for "implausibly early", or a real short cue with a merely-unresolved duration would
+    // misfire as a false positive.
+    const protocol = fakeProtocol();
+    const onEvent = jest.fn();
+    const engine = makeEngine(protocol, { onEvent, fallbackDurationSeconds: 30 });
+
+    await engine.enqueue({ id: 'a', zones: ['Zone 1'], dueAt: 0, cueNumber: 'a', qlabInternalId: 'uid-a' });
+
+    await jest.advanceTimersByTimeAsync(50);
+    protocol.getIsRunningByUniqueId.mockResolvedValueOnce(false);
+    await engine.handleQlabUpdate('uid-a');
+
+    expect(onEvent).toHaveBeenCalledWith('zone_freed', expect.objectContaining({ id: 'a' }), { zone: 'Zone 1' });
+    expect(onEvent).not.toHaveBeenCalledWith('suspected_playback_failure', expect.anything(), expect.anything());
+  });
+
+  it('treats the suspected-failure ratio boundary as strictly-less-than, not less-than-or-equal', async () => {
+    const protocol = fakeProtocol();
+    const onEvent = jest.fn();
+    const engine = makeEngine(protocol, { onEvent, suspectedFailureRatio: 0.5 });
+
+    await engine.enqueue(entry('a', ['Zone 1'], { durationSeconds: 10, qlabInternalId: 'uid-a' }));
+
+    await jest.advanceTimersByTimeAsync(5000); // exactly 50% of the 10s duration
+    protocol.getIsRunningByUniqueId.mockResolvedValueOnce(false);
+    await engine.handleQlabUpdate('uid-a');
+
+    expect(onEvent).toHaveBeenCalledWith('zone_freed', expect.objectContaining({ id: 'a' }), { zone: 'Zone 1' });
+    expect(onEvent).not.toHaveBeenCalledWith('suspected_playback_failure', expect.anything(), expect.anything());
   });
 
   it('ignores /updates pushes for uniqueIds it is not tracking', async () => {

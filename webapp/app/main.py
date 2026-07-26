@@ -68,9 +68,15 @@ async def _poll_and_broadcast_queue_events() -> None:
     """A queued play-now/schedule fire reports 'queued' in its own HTTP response, but the
     actual fire can happen well after that response already went out - the operator would
     otherwise never learn whether it actually played. Polls zoneQueueEngine's recent-events
-    buffer (GET /api/queue/events) and pushes a toast for any 'fired' event flagged
-    afterQueue=true (see lib/queue/zoneQueueEngine.js), i.e. specifically the delayed-fire
-    case, not every routine on-time schedule tick."""
+    buffer (GET /api/queue/events) and pushes a toast for:
+      - any 'fired' event flagged afterQueue=true (see lib/queue/zoneQueueEngine.js), i.e.
+        specifically the delayed-fire case, not every routine on-time schedule tick.
+      - any 'suspected_playback_failure' event - a cue that reported "Playing" at request
+        time but was confirmed stopped implausibly early relative to its own known duration
+        (e.g. its Audio Patch has no live output device - QLab doesn't deny the OSC start in
+        that case, so this can only be caught after the fact). This is the one case where the
+        operator needs to be told something went WRONG, not just that a queued item played.
+    """
     global _last_queue_event_at
     while True:
         try:
@@ -81,13 +87,25 @@ async def _poll_and_broadcast_queue_events() -> None:
 
         for event in events:
             _last_queue_event_at = event["at"]
-            if event["event"] == "fired" and (event.get("extra") or {}).get("afterQueue"):
-                entry = event["entry"]
+            entry = event["entry"]
+            extra = event.get("extra") or {}
+
+            if event["event"] == "fired" and extra.get("afterQueue"):
                 await sio.emit(
                     "queue_notification",
                     {
                         "message": f"{entry.get('name') or entry['cueNumber']} is now playing "
                         f"(cue {entry['cueNumber']}) - it was waiting for the zone to clear",
+                    },
+                )
+            elif event["event"] == "suspected_playback_failure":
+                elapsed_s = round(extra.get("elapsedMs", 0) / 1000, 1)
+                await sio.emit(
+                    "playback_failure",
+                    {
+                        "message": f"{entry.get('name') or entry['cueNumber']} (cue {entry['cueNumber']}) "
+                        f"in {extra.get('zone', 'its zone')} stopped after only {elapsed_s}s - it "
+                        "likely did not actually play. Check that zone's audio output device.",
                     },
                 )
 
