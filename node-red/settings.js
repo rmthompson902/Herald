@@ -3,6 +3,7 @@
 const path = require('path');
 const { createCore } = require('../lib/index');
 const { createEventLogger } = require('../lib/log/eventLogger');
+const { createAppLogger } = require('../lib/log/appLogger');
 const cronSyncMessages = require('./lib/applyCronSyncDirectives');
 const { refreshCueCache, refreshAllReferencedCues } = require('./lib/refreshCueCache');
 const zonesAdmin = require('./lib/zonesAdmin');
@@ -12,13 +13,19 @@ const { deriveZoneSuggestion } = require('../lib/zones/zoneNamingConvention');
 // section) - this is what the webapp's /history page tails directly.
 const eventLogger = createEventLogger(path.join(__dirname, '..', 'logs'));
 
+// General diagnostics, same directory/retention/rotation as eventLogger but a separate
+// file (app-*.log) and a separate purpose - full raw detail (every inbound OSC message,
+// among other things) rather than curated one-line-per-business-event history.
+const appLogger = createAppLogger(path.join(__dirname, '..', 'logs'));
+
 const core = createCore({
   dbPath: process.env.DB_PATH || path.join(__dirname, '..', 'data', 'schedule.db'),
   audioPatchMapPath: path.join(__dirname, '..', 'config', 'audio-patch-map.json'),
   qlabOscHost: process.env.QLAB_OSC_HOST || '127.0.0.1',
   qlabOscPort: Number(process.env.QLAB_OSC_PORT || 53000),
   localOscPort: Number(process.env.LOCAL_OSC_PORT || 53001),
-  onQueueEvent: eventLogger.logQueueEvent
+  onQueueEvent: eventLogger.logQueueEvent,
+  appLogger
 });
 
 // healthMonitor emits 'stateChange' on every real transition (see lib/health/healthMonitor.js) -

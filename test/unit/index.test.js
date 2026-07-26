@@ -150,3 +150,72 @@ describe('core.zones.save', () => {
     core.db.connection.close();
   });
 });
+
+describe('OSC message logging', () => {
+  function fakeAppLogger() {
+    const oscLog = { debug: jest.fn(), warn: jest.fn() };
+    const getLogger = jest.fn(() => oscLog);
+    return { getLogger, oscLog };
+  }
+
+  it('logs every inbound OSC message at debug when appLogger is configured', () => {
+    const { getLogger, oscLog } = fakeAppLogger();
+    const core = createCore({
+      dbPath: tempDbPath(),
+      audioPatchMapPath: path.join(__dirname, '..', '..', 'config', 'audio-patch-map.json'),
+      qlabOscHost: '127.0.0.1',
+      qlabOscPort: 53000,
+      localOscPort: 53001,
+      appLogger: getLogger
+    });
+
+    expect(getLogger).toHaveBeenCalledWith('oscClient');
+
+    // /update pushes carry no payload (see test/fixtures/qlab-osc-findings.md) - must not throw.
+    core.osc.client.emit('message', { address: '/update/workspace/ABC/cue_id/XYZ', args: [] });
+
+    expect(oscLog.debug).toHaveBeenCalledWith('/update/workspace/ABC/cue_id/XYZ []');
+    expect(oscLog.warn).not.toHaveBeenCalled();
+
+    core.db.connection.close();
+  });
+
+  it('logs a denial-shaped reply at warn instead of debug', () => {
+    const { getLogger, oscLog } = fakeAppLogger();
+    const core = createCore({
+      dbPath: tempDbPath(),
+      audioPatchMapPath: path.join(__dirname, '..', '..', 'config', 'audio-patch-map.json'),
+      qlabOscHost: '127.0.0.1',
+      qlabOscPort: 53000,
+      localOscPort: 53001,
+      appLogger: getLogger
+    });
+
+    core.osc.client.emit('message', {
+      address: '/reply/cue/1101/start',
+      args: [{ type: 's', value: JSON.stringify({ status: 'error', message: 'denied' }) }]
+    });
+
+    expect(oscLog.warn).toHaveBeenCalledWith('/reply/cue/1101/start {"status":"error","message":"denied"}');
+    expect(oscLog.debug).not.toHaveBeenCalled();
+
+    core.db.connection.close();
+  });
+
+  it('does not attach an OSC logging listener when appLogger is not configured', () => {
+    const core = createCore({
+      dbPath: tempDbPath(),
+      audioPatchMapPath: path.join(__dirname, '..', '..', 'config', 'audio-patch-map.json'),
+      qlabOscHost: '127.0.0.1',
+      qlabOscPort: 53000,
+      localOscPort: 53001
+    });
+
+    // Should not throw with no logger wired in.
+    expect(() =>
+      core.osc.client.emit('message', { address: '/thump', args: [{ type: 's', value: '{"status":"ok"}' }] })
+    ).not.toThrow();
+
+    core.db.connection.close();
+  });
+});
