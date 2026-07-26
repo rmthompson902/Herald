@@ -30,10 +30,19 @@ class NodeRedClient:
         try:
             async with httpx.AsyncClient(timeout=self._timeout) as client:
                 response = await client.request(method, url, **kwargs)
-        except httpx.ConnectError as exc:
-            raise NodeRedUnavailableError(f"Node-RED is unreachable at {url}") from exc
-        except httpx.TimeoutException as exc:
-            raise NodeRedUnavailableError(f"Node-RED timed out at {url}") from exc
+        # httpx.HTTPError is the base class for every network/protocol-level failure
+        # (connect-refused, timeout, a reset connection, a malformed response, ...) - found
+        # via a real robustness review that this previously only caught two of many concrete
+        # subtypes (ConnectError, TimeoutException), despite this method's own docstring
+        # promising every caller that connect-refused "is handled gracefully and never raised
+        # as an unhandled exception up into a router." Any other httpx failure fell straight
+        # through that promise uncaught - notably into the background pollers in main.py,
+        # where an uncaught exception permanently kills that asyncio.Task with nothing to
+        # notice or restart it. Catching the base class here, once, is correct because every
+        # one of these concrete failure modes means the exact same thing to every caller:
+        # "couldn't complete this call to Node-RED right now."
+        except httpx.HTTPError as exc:
+            raise NodeRedUnavailableError(f"Node-RED request to {url} failed: {exc}") from exc
 
         try:
             body = response.json()

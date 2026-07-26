@@ -105,4 +105,32 @@ describe('OscClient', () => {
       args: [{ type: 'i', value: 1 }]
     });
   });
+
+  describe('transport error handling', () => {
+    // EventEmitter special-cases 'error': emitted with no listener attached, it throws
+    // synchronously and crashes the whole process - a real gap found via a robustness
+    // review (nothing anywhere was listening to oscClient's proxied port errors). This
+    // pins the fix: a bare OscClient, with no caller-attached listener at all, must survive
+    // a transport error without throwing.
+    it('does not throw when the underlying UDP port emits an error, even with no external listener attached', () => {
+      const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+      expect(() => lastFakePort.emit('error', new Error('EADDRINUSE'))).not.toThrow();
+      expect(consoleError).toHaveBeenCalledWith(expect.stringContaining('EADDRINUSE'));
+
+      consoleError.mockRestore();
+    });
+
+    it('still notifies a caller-attached error listener in addition to the baseline safety net', () => {
+      const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+      const onError = jest.fn();
+      client.on('error', onError);
+
+      lastFakePort.emit('error', new Error('ENETUNREACH'));
+
+      expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: 'ENETUNREACH' }));
+
+      consoleError.mockRestore();
+    });
+  });
 });

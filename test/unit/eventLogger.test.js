@@ -1,9 +1,16 @@
 'use strict';
 
+const EventEmitter = require('events');
+
 const { attachEventLogger } = require('../../lib/log/eventLogger');
 
+// A real EventEmitter, not a plain object - winston's actual Logger is one too, and the
+// transport-error-handling tests below depend on that (see attachEventLogger's own 'error'
+// wiring, which calls logger.on(...)).
 function fakeLogger() {
-  return { info: jest.fn() };
+  const logger = new EventEmitter();
+  logger.info = jest.fn();
+  return logger;
 }
 
 describe('eventLogger', () => {
@@ -86,6 +93,23 @@ describe('eventLogger', () => {
       logHealthTransition('unknown', 'disconnected');
 
       expect(logger.info).toHaveBeenCalledWith('health_disconnect from=unknown to=disconnected');
+    });
+  });
+
+  describe('transport error handling', () => {
+    // winston's Logger is itself an EventEmitter - an unhandled transport 'error' (disk
+    // full, permission denied, a mid-rotation failure) throws and crashes the process, same
+    // gap as lib/osc/oscClient.js had. This pins the fix: attaching the returned functions
+    // must not require the CALLER to also remember to attach an error listener.
+    it('does not throw when the underlying logger emits a transport error, even with no external listener attached', () => {
+      const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+      const logger = fakeLogger();
+      attachEventLogger(logger); // attaching alone must install the safety net
+
+      expect(() => logger.emit('error', new Error('ENOSPC'))).not.toThrow();
+      expect(consoleError).toHaveBeenCalledWith(expect.stringContaining('ENOSPC'));
+
+      consoleError.mockRestore();
     });
   });
 });

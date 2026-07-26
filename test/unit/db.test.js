@@ -25,6 +25,21 @@ describe('database bootstrap', () => {
     expect(migrationCount).toBe(1);
     db2.close();
   });
+
+  it('still fails fast on a real open failure, with a clear diagnostic instead of a bare driver stack trace', () => {
+    // Found via a real robustness review: previously an open/migration failure here (a
+    // corrupted file, a stale lock) surfaced only as a raw better-sqlite3 stack trace with
+    // no path context. Deliberately still fails fast/rethrows (launchd's KeepAlive is the
+    // actual recovery mechanism - see deploy/launchd/) - this only makes the cause clear.
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const dirAsDbPath = fs.mkdtempSync(path.join(os.tmpdir(), 'qlab-sched-test-'));
+
+    expect(() => openDatabase(dirAsDbPath)).toThrow();
+    expect(consoleError).toHaveBeenCalledWith(expect.stringContaining(dirAsDbPath));
+    expect(consoleError).toHaveBeenCalledWith(expect.stringContaining('FATAL'));
+
+    consoleError.mockRestore();
+  });
 });
 
 describe('schedulesRepo', () => {

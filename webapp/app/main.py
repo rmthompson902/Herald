@@ -9,6 +9,7 @@ Run with: uvicorn app.main:app --app-dir webapp --host 127.0.0.1 --port 8000
 
 import asyncio
 import contextlib
+import logging
 from pathlib import Path
 
 import socketio
@@ -18,6 +19,8 @@ from fastapi.staticfiles import StaticFiles
 from app.config import settings
 from app.node_red_client import NodeRedUnavailableError, node_red_client
 from app.routers import cues_api, history_api, pages, schedules_api, status_api, vog_api, zones_api
+
+log = logging.getLogger(__name__)
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 
@@ -57,9 +60,19 @@ async def _poll_and_broadcast_health() -> None:
         except NodeRedUnavailableError:
             health = {"status": "error", "state": "disconnected", "armed": False}
 
-        if health != _last_health:
-            _last_health = health
-            await sio.emit("health_update", health)
+        # Broad except, deliberately: only NodeRedUnavailableError (above) is an expected,
+        # already-handled failure. Anything else here (a socketio hiccup, an unexpected
+        # health shape) previously had nothing catching it - found via a real robustness
+        # review, not a report - which silently and permanently kills this asyncio.Task the
+        # first time it happens. That's not a crash launchd's KeepAlive would ever notice or
+        # restart from; the process looks alive while real-time health push is just gone for
+        # the rest of its life. Log and keep looping instead - never let this task die.
+        try:
+            if health != _last_health:
+                _last_health = health
+                await sio.emit("health_update", health)
+        except Exception:
+            log.exception("health poller: unexpected error broadcasting health_update")
 
         await asyncio.sleep(settings.health_poll_interval_seconds)
 
@@ -85,29 +98,37 @@ async def _poll_and_broadcast_queue_events() -> None:
         except NodeRedUnavailableError:
             events = []
 
+        # Broad except per-event, deliberately: an unexpected/malformed single event (or a
+        # socketio hiccup mid-emit) must not be able to permanently kill this task and take
+        # the delayed-fire and playback-failure notifications down with it for the rest of
+        # the process's life - same reasoning as _poll_and_broadcast_health above. One bad
+        # event is skipped and logged; the loop (and every event after it) keeps going.
         for event in events:
             _last_queue_event_at = event["at"]
-            entry = event["entry"]
-            extra = event.get("extra") or {}
+            try:
+                entry = event["entry"]
+                extra = event.get("extra") or {}
 
-            if event["event"] == "fired" and extra.get("afterQueue"):
-                await sio.emit(
-                    "queue_notification",
-                    {
-                        "message": f"{entry.get('name') or entry['cueNumber']} is now playing "
-                        f"(cue {entry['cueNumber']}) - it was waiting for the zone to clear",
-                    },
-                )
-            elif event["event"] == "suspected_playback_failure":
-                elapsed_s = round(extra.get("elapsedMs", 0) / 1000, 1)
-                await sio.emit(
-                    "playback_failure",
-                    {
-                        "message": f"{entry.get('name') or entry['cueNumber']} (cue {entry['cueNumber']}) "
-                        f"in {extra.get('zone', 'its zone')} stopped after only {elapsed_s}s - it "
-                        "likely did not actually play. Check that zone's audio output device.",
-                    },
-                )
+                if event["event"] == "fired" and extra.get("afterQueue"):
+                    await sio.emit(
+                        "queue_notification",
+                        {
+                            "message": f"{entry.get('name') or entry['cueNumber']} is now playing "
+                            f"(cue {entry['cueNumber']}) - it was waiting for the zone to clear",
+                        },
+                    )
+                elif event["event"] == "suspected_playback_failure":
+                    elapsed_s = round(extra.get("elapsedMs", 0) / 1000, 1)
+                    await sio.emit(
+                        "playback_failure",
+                        {
+                            "message": f"{entry.get('name') or entry['cueNumber']} (cue {entry['cueNumber']}) "
+                            f"in {extra.get('zone', 'its zone')} stopped after only {elapsed_s}s - it "
+                            "likely did not actually play. Check that zone's audio output device.",
+                        },
+                    )
+            except Exception:
+                log.exception("queue events poller: unexpected error handling event %r", event)
 
         await asyncio.sleep(settings.health_poll_interval_seconds)
 

@@ -96,4 +96,29 @@ describe('HealthMonitor', () => {
     await jest.advanceTimersByTimeAsync(1000);
     expect(protocol.keepAlive).toHaveBeenCalledTimes(2);
   });
+
+  it('logs a subscribeUpdates() startup failure via the injected logger instead of swallowing it silently', async () => {
+    // Previously this had no logging at all (just a comment) - found via a real robustness
+    // review. Not fatal by design (the heartbeat loop still surfaces real disconnects via
+    // the normal miss-threshold path), but a startup-time failure here deserves a durable
+    // trace, especially now that appLogger exists to carry it.
+    protocol.subscribeUpdates.mockRejectedValueOnce(new Error('OSC request timed out'));
+    protocol.thump.mockResolvedValue('thump');
+    const log = { warn: jest.fn() };
+    const loggedMonitor = new HealthMonitor(protocol, client, { heartbeatIntervalMs: 1000, log });
+
+    await loggedMonitor.start();
+
+    expect(log.warn).toHaveBeenCalledWith(expect.stringContaining('OSC request timed out'));
+    expect(loggedMonitor.isArmed()).toBe(true); // still arms normally via the heartbeat itself
+
+    loggedMonitor.stop();
+  });
+
+  it('does not throw when subscribeUpdates() fails and no logger was injected', async () => {
+    protocol.subscribeUpdates.mockRejectedValueOnce(new Error('OSC request timed out'));
+    protocol.thump.mockResolvedValue('thump');
+
+    await expect(monitor.start()).resolves.toBeUndefined();
+  });
 });
