@@ -1,11 +1,11 @@
 /**
- * Event History page - polls for new log lines periodically so the page
- * stays current without a manual reload, plus a "Refresh Log Entries"
- * button (in place of the global "Refresh Cue Data" button, which doesn't
- * apply to this page) for an immediate check. Reads the same
- * events-YYYY-MM-DD.log file the page renders server-side on first load
- * (see app/log_reader.py) - GET /api/history/entries is a plain re-read of
- * that file, not a proxy to Node-RED.
+ * Event Log accordion on the Settings page (formerly its own /history page) -
+ * polls for new log lines periodically so it stays current without a manual
+ * reload, plus a "Refresh Log Entries" button (in the page header, in place
+ * of the global "Refresh Cue Data" button, which doesn't apply here) for an
+ * immediate check. Reads the same events-YYYY-MM-DD.log file the page renders
+ * server-side on first load (see app/log_reader.py) - GET /api/history/entries
+ * is a plain re-read of that file, not a proxy to Node-RED.
  */
 const HISTORY_AUTO_REFRESH_MS = 5000;
 

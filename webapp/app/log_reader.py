@@ -1,8 +1,9 @@
 """
 Reads the most recent lines from today's event log (see lib/log/eventLogger.js).
-Shared by the server-rendered /history page (first load) and the
-GET /api/history/entries JSON endpoint the page polls afterward for
-auto-refresh, so both read the exact same file the exact same way.
+Shared by the Settings page's Event Log accordion (first load - see
+routers/pages.py's settings_page) and the GET /api/history/entries JSON endpoint
+it polls afterward for auto-refresh, so both read the exact same file the exact
+same way.
 """
 
 import glob

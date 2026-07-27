@@ -10,7 +10,10 @@
 {{ ph.page_header(
     'Settings',
     'QLab connection status and zone configuration (Messaging Audio Patch + duck/unduck cues). Zone changes take effect immediately - no restart needed.',
-    [{'type': 'link', 'url': url_for('zone_new'), 'text': 'Add Zone', 'icon': 'fas fa-plus', 'class': 'btn-primary'}],
+    [
+        {'type': 'button', 'id': 'refreshLogBtn', 'text': 'Refresh Log Entries', 'icon': 'fas fa-sync-alt', 'class': 'btn-outline-secondary', 'tooltip': 'Reload the latest event log entries now'},
+        {'type': 'link', 'url': url_for('zone_new'), 'text': 'Add Zone', 'icon': 'fas fa-plus', 'class': 'btn-primary'}
+    ],
     [],
     False
 ) }}
@@ -63,6 +66,35 @@
     {% endif %}
 </div>
 
+<div class="accordion mb-4" id="eventLogAccordion">
+    <div class="accordion-item">
+        <h2 class="accordion-header">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                    data-bs-target="#eventLogCollapse" aria-expanded="false" aria-controls="eventLogCollapse">
+                Event Log
+            </button>
+        </h2>
+        <div id="eventLogCollapse" class="accordion-collapse collapse" data-bs-parent="#eventLogAccordion">
+            <div class="accordion-body">
+                <p class="text-muted small mb-3">Most recent 200 lines from today's event log. Refreshes automatically.</p>
+                <div id="historyLogContainer">
+                    {% if not entries %}
+                        {{ es.empty_state('list', 'No events logged yet', 'Fired, queued, and VOG events will show up here once the scheduling engine is logging (see lib/log/eventLogger.js).') }}
+                    {% else %}
+                    <div class="card">
+                        <div class="card-body">
+                            {% for line in entries %}
+                            <div class="log-entry{% if 'vog' in line.lower() %} text-vog{% elif 'error' in line.lower() %} text-danger{% endif %}">{{ line }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="card">
     <div class="card-header">
         <h5 class="mb-0">Connection Status</h5>
@@ -86,4 +118,5 @@
 {% block scripts %}
 <script src="{{ url_for('static', path='js/status.js') }}"></script>
 <script src="{{ url_for('static', path='js/zones_list.js') }}"></script>
+<script src="{{ url_for('static', path='js/history.js') }}"></script>
 {% endblock %}

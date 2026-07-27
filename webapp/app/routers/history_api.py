@@ -1,8 +1,9 @@
 """
-JSON endpoint backing the /history page's periodic auto-refresh and its
-manual "Refresh Log Entries" button. Reads the same events-YYYY-MM-DD.log
-file the page itself reads on first load (see app/log_reader.py) - a plain
-re-read, no proxy to Node-RED needed.
+JSON endpoint backing the Settings page's Event Log accordion (see
+templates/settings.html) - its periodic auto-refresh and its manual
+"Refresh Log Entries" button. Reads the same events-YYYY-MM-DD.log file the
+page itself reads on first load (see app/log_reader.py) - a plain re-read,
+no proxy to Node-RED needed.
 """
 
 from fastapi import APIRouter

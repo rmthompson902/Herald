@@ -109,12 +109,6 @@ async def vog_edit(request: Request, vog_id: int):
     return templates.TemplateResponse(request, "vog/form.html", {"vog_message": vog_message})
 
 
-@router.get("/history", name="history_page")
-async def history_page(request: Request):
-    entries = read_recent_entries()
-    return templates.TemplateResponse(request, "history.html", {"entries": entries})
-
-
 @router.get("/settings", name="settings_page")
 async def settings_page(request: Request):
     # Connection status and zone config are both read live from Node-RED - zones have no
@@ -138,10 +132,15 @@ async def settings_page(request: Request):
     for zone in zones:
         zone["patchName"] = patch_name_by_id.get(zone["messagingPatchId"])
 
+    # The event log used to be its own page (/history) - folded in here as a collapsed
+    # accordion (see settings.html) between Zones and Connection Status, so operators don't
+    # need a separate nav destination just to glance at recent activity.
+    entries = read_recent_entries()
+
     return templates.TemplateResponse(
         request,
         "settings.html",
-        {"health": health, "node_red_reachable": node_red_reachable, "zones": zones},
+        {"health": health, "node_red_reachable": node_red_reachable, "zones": zones, "entries": entries},
     )
 
 
