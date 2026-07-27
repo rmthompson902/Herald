@@ -11,7 +11,14 @@ logs/
 *.log
 
 .DS_Store
+Icon?
 .env
+
+# Tool caches (Ruff writes its own .ruff_cache/.gitignore too, but be explicit)
+.ruff_cache/
+
+# Local Claude Code settings (shared .claude/settings.json may be committed; local overrides are not)
+.claude/settings.local.json
 
 _old/
 
