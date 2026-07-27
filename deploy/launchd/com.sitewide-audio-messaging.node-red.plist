@@ -27,6 +27,15 @@
     <key>KeepAlive</key>
     <true/>
 
+    <!-- Floor between respawn attempts if the process keeps dying immediately (e.g. a
+         persistent startup failure - see fn_startup's now-loud error, or a DB corruption
+         that database.js now surfaces clearly rather than silently). Without this, an
+         unrecoverable-by-restart failure could crash-loop as fast as the OS allows,
+         thrashing CPU and flooding the launchd-*-error.log below. KeepAlive+RunAtLoad still
+         mean it keeps trying forever - this only paces the retries, it doesn't give up. -->
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
     <key>StandardOutPath</key>
     <string>/Users/ryanthompson/Documents/_dev/Sitewide-Audio-Messaging/logs/launchd-node-red.log</string>
     <key>StandardErrorPath</key>

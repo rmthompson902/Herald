@@ -28,6 +28,12 @@
     <key>KeepAlive</key>
     <true/>
 
+    <!-- Same reasoning as the node-red agent's identical key - paces respawn attempts if
+         the process keeps dying immediately, rather than crash-looping as fast as the OS
+         allows. -->
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
     <key>StandardOutPath</key>
     <string>/Users/ryanthompson/Documents/_dev/Sitewide-Audio-Messaging/logs/launchd-webapp.log</string>
     <key>StandardErrorPath</key>

@@ -1,37 +1,70 @@
 # launchd auto-start
 
-Two per-user LaunchAgents (not system LaunchDaemons - QLab itself only runs in a logged-in
-GUI session, so these start alongside that same login rather than before anyone logs in):
+Two per-user LaunchAgents (per-user, not system-wide, since QLab only runs in a logged-in GUI
+session): `com.sitewide-audio-messaging.node-red.plist` (scheduling engine) and
+`...webapp.plist` (FastAPI UI). Both auto-start at login (`RunAtLoad`) and auto-restart on
+crash (`KeepAlive` + a 10s `ThrottleInterval` floor so a persistent failure crash-loops at a
+bounded rate instead of as fast as the OS allows). No ordering dependency - the webapp
+degrades gracefully if it comes up before Node-RED. QLab itself isn't managed by either plist.
 
-- `com.sitewide-audio-messaging.node-red.plist` - the scheduling engine
-- `com.sitewide-audio-messaging.webapp.plist` - the FastAPI operator UI
-
-Both `RunAtLoad` (start automatically at login) and `KeepAlive` (restart automatically if the
-process ever exits/crashes). No ordering dependency between them - the webapp degrades
-gracefully if it comes up before Node-RED is ready. QLab itself is not managed by either plist;
-it needs its own separate auto-launch (e.g. a Login Item) if unattended startup should include it.
-
-Paths inside both plists are hardcoded to this machine's actual locations
-(`/Users/ryanthompson/Documents/_dev/Sitewide-Audio-Messaging`, `/opt/homebrew/bin/node`) -
-edit them first if this is ever deployed to a different machine or user account.
+Paths inside both plists are hardcoded to this machine - edit them first if deploying
+elsewhere.
 
 ## Install
 
-```
-cp deploy/launchd/com.sitewide-audio-messaging.node-red.plist ~/Library/LaunchAgents/
-cp deploy/launchd/com.sitewide-audio-messaging.webapp.plist ~/Library/LaunchAgents/
-launchctl load ~/Library/LaunchAgents/com.sitewide-audio-messaging.node-red.plist
-launchctl load ~/Library/LaunchAgents/com.sitewide-audio-messaging.webapp.plist
-```
+1. Stop any manually-running dev instances first (two processes fighting over the same port
+   will both fail):
+   ```
+   lsof -i :1880 -i :8000
+   kill -TERM <pid> <pid>
+   ```
+2. Copy and load:
+   ```
+   cp deploy/launchd/com.sitewide-audio-messaging.node-red.plist ~/Library/LaunchAgents/
+   cp deploy/launchd/com.sitewide-audio-messaging.webapp.plist ~/Library/LaunchAgents/
+   launchctl load ~/Library/LaunchAgents/com.sitewide-audio-messaging.node-red.plist
+   launchctl load ~/Library/LaunchAgents/com.sitewide-audio-messaging.webapp.plist
+   launchctl list | grep sitewide-audio-messaging
+   ```
+   Real PID + exit status `0` = running. `-` PID + nonzero exit status = crashing on startup -
+   check `logs/launchd-*-error.log` (see the TCC gotcha below, the most likely cause).
+3. Verify for real, not just PID presence:
+   ```
+   curl -s http://127.0.0.1:1880/api/health   # expect {"state":"connected","armed":true}
+   curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8000/schedules   # expect 200
+   ```
+4. Prove `KeepAlive` actually works rather than assuming it:
+   ```
+   kill -9 <a pid from step 2>
+   # re-check the health curl above - should self-heal within a few seconds, new PID
+   ```
 
-Check status:
+Logs: `logs/launchd-*.log` (stdout) / `logs/launchd-*-error.log` (stderr) - separate from
+`logs/events-*.log` (business events) and Node-RED's own console output.
 
-```
-launchctl list | grep sitewide-audio-messaging
-```
+## macOS TCC / Full Disk Access gotcha
 
-Logs land in `logs/launchd-*.log` (stdout) and `logs/launchd-*-error.log` (stderr) - separate
-from `logs/events-*.log` (the business event log) and Node-RED's own console output.
+Symptom: `logs/launchd-webapp-error.log` shows `PermissionError: ... Operation not permitted:
+'.../.venv/pyvenv.cfg'` and the webapp crash-loops. Cause: the venv's `uvicorn` shebang
+invokes a Homebrew "framework" Python build that re-execs itself internally, and a
+launchd-spawned process doesn't inherit the folder access your Terminal session already has -
+**both** binaries in that re-exec chain need an explicit grant, not just one. Fix: System
+Settings -> Privacy & Security -> Full Disk Access -> "+" -> `Cmd+Shift+G` (paste, don't
+navigate Finder - easy to land on the wrong nested binary) -> add both:
+```
+/opt/homebrew/Cellar/python@3.12/3.12.3/Frameworks/Python.framework/Versions/3.12/bin/python3.12
+/opt/homebrew/Cellar/python@3.12/3.12.3/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python
+```
+Then `launchctl unload`/`load` the webapp plist again. Node-RED's `node` binary didn't need
+this on this machine - if it ever does elsewhere, same fix, path from `which node` there.
+
+## Restarting to pick up code changes
+
+Don't use a bare `kill` - it races `KeepAlive`. Use the agent-aware restart instead:
+```
+launchctl kickstart -k gui/$(id -u)/com.sitewide-audio-messaging.node-red
+launchctl kickstart -k gui/$(id -u)/com.sitewide-audio-messaging.webapp
+```
 
 ## Uninstall / stop
 
