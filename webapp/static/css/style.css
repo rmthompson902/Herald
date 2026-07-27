@@ -699,8 +699,32 @@ button:hover .fa-sync-alt {
     overflow-y: auto;
 }
 
+/* Fixed layout + an explicit Fires column width (via the macro's <colgroup>) so a
+   per-second countdown re-render ("in 9s" -> "in 12s" -> "in 1m"...) never changes how
+   wide either column is - under the default "auto" table layout, the browser re-measures
+   column widths from current content on every reflow, which visibly jittered the column
+   border by a few pixels on every tick. 190px comfortably fits the widest realistic Fires
+   text ("in 59m (11:59:59 PM)"); the Cue column takes whatever's left. */
+.zone-queue-table {
+    table-layout: fixed;
+}
+
+.zone-queue-fires-col {
+    width: 190px;
+}
+
 .zone-queue-table td {
     vertical-align: middle;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Only the Fires column ever holds digits that change every tick - tabular figures keep
+   each digit the same width so the text itself doesn't visibly creep even within its now-
+   fixed column. */
+.zone-queue-table td:last-child {
+    font-variant-numeric: tabular-nums;
 }
 
 /* Small circular "is this zone live right now" indicator - is-playing reuses the same
@@ -722,6 +746,14 @@ button:hover .fa-sync-alt {
 }
 
 .queue-status-dot.is-warning {
+    background-color: var(--warning);
+}
+
+/* A cue already admitted into the zone's real FIFO, blocked only on the zone clearing -
+   distinct from the plain muted dot a merely-projected future occurrence gets, so a
+   glance at the dot alone already tells "about to play the moment the zone frees" apart
+   from "scheduled, still a while off". */
+.queue-status-dot.is-waiting {
     background-color: var(--warning);
 }
 

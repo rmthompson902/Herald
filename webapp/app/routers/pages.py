@@ -73,14 +73,14 @@ async def schedule_edit(request: Request, schedule_id: int):
     return templates.TemplateResponse(request, "schedules/form.html", {"schedule": schedule})
 
 
-@router.get("/queue", name="queue_visualizer")
+@router.get("/queues", name="queue_visualizer")
 async def queue_visualizer(request: Request):
     # Unlike _render_schedules_list, nothing here is server-rendered from a snapshot - the
     # page is inherently live, so the server only hands over the zone list to build the
     # initial (empty) card skeletons; occupancy/queued/upcoming state all arrive
     # client-side via QueueAPI + the SocketIO push (see static/js/queue_visualizer.js).
     zone_names = list_zone_names()
-    return templates.TemplateResponse(request, "queue/visualizer.html", {"zone_names": zone_names})
+    return templates.TemplateResponse(request, "queues/visualizer.html", {"zone_names": zone_names})
 
 
 def _render_vog_list(request: Request):

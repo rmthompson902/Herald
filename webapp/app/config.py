@@ -21,6 +21,13 @@ class Settings(BaseSettings):
     port: int = 8000
     log_level: str = "INFO"
     health_poll_interval_seconds: float = 2.0
+    # Deliberately much faster than health_poll_interval_seconds - QLab connection health
+    # changes rarely and doesn't need sub-second granularity, but the zone queue visualizer
+    # (/queues) needs a transition (duck starting, a cue actually firing, a zone freeing) to
+    # reach the browser fast enough to read as "live" rather than laggy. Both endpoints this
+    # backs (GET /queue/state, /queue/events) are cheap in-memory reads on the Node-RED side,
+    # not real I/O, so polling this much faster than the health check costs nothing there.
+    queue_poll_interval_seconds: float = 0.5
 
     class Config:
         env_file = str(REPO_ROOT / "webapp" / ".env")

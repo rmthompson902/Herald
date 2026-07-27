@@ -1,5 +1,5 @@
 """
-Browser-facing queue API for the zone queue visualizer (/queue). Thin proxy to
+Browser-facing queue API for the zone queue visualizer (/queues). Thin proxy to
 Node-RED's GET /api/queue/state and GET /api/queue/upcoming - same shape as
 zones_api.py. Real-time updates for the page itself arrive over SocketIO (see
 main.py's _poll_and_broadcast_queue_state/_poll_and_broadcast_queue_events); these

@@ -111,7 +111,10 @@ async def _poll_and_broadcast_queue_state() -> None:
         except Exception:
             log.exception("queue state poller: unexpected error broadcasting queue_state_update")
 
-        await asyncio.sleep(settings.health_poll_interval_seconds)
+        # Deliberately faster than the health poller (see Settings.queue_poll_interval_seconds) -
+        # a transition here (duck starting, a cue actually firing) needs to reach the browser
+        # quickly enough to read as live, not laggy.
+        await asyncio.sleep(settings.queue_poll_interval_seconds)
 
 
 async def _poll_and_broadcast_queue_events() -> None:
@@ -175,7 +178,7 @@ async def _poll_and_broadcast_queue_events() -> None:
             except Exception:
                 log.exception("queue events poller: unexpected error handling event %r", event)
 
-        await asyncio.sleep(settings.health_poll_interval_seconds)
+        await asyncio.sleep(settings.queue_poll_interval_seconds)
 
 
 @app.on_event("startup")

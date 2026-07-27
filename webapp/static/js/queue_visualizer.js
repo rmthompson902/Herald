@@ -1,8 +1,12 @@
 /**
- * Zone queue visualizer (/queue) - one card per zone, each showing that zone's
+ * Zone queue visualizer (/queues) - one card per zone, each showing that zone's
  * currently-playing cue (pinned above the table, live countdown) and a single merged
  * table of upcoming cues: already-queued FIFO entries and future cron-projected
  * occurrences, interleaved by fire time (see lib/scheduling/zoneUpcomingOccurrences.js).
+ * Trimmed to two columns (Cue, Fires) - a name/status/duration column each added enough
+ * text that rows were wrapping to multiple lines, so the "is playing" dot now lives
+ * inline in the Cue cell and duration is folded into the Fires cell (as the live clock
+ * for the currently-playing row only - everything else just shows when it fires).
  *
  * Live state arrives over the shared SocketIO connection declared in base.html (the
  * bare `socket` identifier below - see static/js/status.js for the same pattern):
@@ -13,8 +17,9 @@
  *     changed), so that zone's batch is dropped and re-fetched from offset 0;
  *     suspected_playback_failure drives the per-zone warning badge.
  *
- * Duration is never fabricated: a cue whose duration was never resolved
- * (knownDurationMs: null) renders as "Duration unknown" text, never a fake countdown.
+ * Duration is never fabricated: a currently-playing cue whose duration was never
+ * resolved (knownDurationMs: null) renders as "Duration unknown" text, never a fake
+ * countdown clock.
  */
 
 const RECENT_FAILURE_WINDOW_MS = 10 * 60 * 1000; // how long the warning badge stays lit
@@ -85,64 +90,91 @@ function renderClockMarkup(knownDurationMs) {
         </div>`;
 }
 
-function renderNowPlayingRow(occupancy) {
+/**
+ * The occupancy map has three genuinely distinct states, not two - conflating the first
+ * two (both have firedAt == null) previously mislabeled an ordinary cue that was still
+ * going through the duck-wait/confirm-before-fire admission chain as "Unducking", which
+ * is only ever true for the THIRD state below:
+ *   1. Admitted but not yet fired (zoneQueueEngine.js's _tryAdvance, `confirmed: false`) -
+ *      a real cue, reserved while its zone's duck cue plays or a getIsRunningByUniqueId
+ *      retry loop resolves. firedAt/expectedEndAt are null because it hasn't actually
+ *      started yet, not because it's a placeholder.
+ *   2. Actually fired and playing (`_fire`, `confirmed: true`, firedAt set) - the normal
+ *      live-countdown case.
+ *   3. The synthetic unduck-wait marker (`_maybeUnduck`) - a zone reserved with no real
+ *      cue at all while its unduck cue plays. The ONLY reliable signal for this is
+ *      `entry.id === null` (see that function's own unduckEntry literal), not firedAt -
+ *      state 1 has a null firedAt too, but a real entry.id.
+ */
+function renderOccupancyRow(occupancy) {
     const { entry, expectedEndAt, knownDurationMs, firedAt } = occupancy;
 
-    if (firedAt == null) {
-        // The synthetic unduck-wait marker (see zoneQueueEngine.js's markDucked/_maybeUnduck) -
-        // the zone is claimed but nothing is actually playing yet, so there's no cue/duration
-        // to show, only that the zone isn't free.
+    if (entry.id === null) {
         return `
         <tr class="queue-row-now-playing" data-role="now-playing">
-            <td colspan="4"><span class="queue-status-dot is-playing" aria-hidden="true"></span>Unducking&hellip;</td>
+            <td colspan="2"><span class="queue-status-dot is-playing" aria-hidden="true"></span>Unducking&hellip;</td>
         </tr>`;
     }
 
     const name = escapeHtml(entry.name || String(entry.cueNumber));
-    const cueNumber = escapeHtml(String(entry.cueNumber));
+
+    if (firedAt == null) {
+        return `
+        <tr class="queue-row-now-playing" data-role="now-playing">
+            <td><span class="queue-status-dot is-playing" aria-hidden="true"></span>${name}</td>
+            <td class="text-muted">Starting&hellip;</td>
+        </tr>`;
+    }
 
     return `
     <tr class="queue-row-now-playing" data-role="now-playing"
         data-fired-at="${firedAt}" data-expected-end-at="${expectedEndAt}"
         data-known-duration-ms="${knownDurationMs == null ? '' : knownDurationMs}">
-        <td>${name} <code>${cueNumber}</code></td>
-        <td><span class="queue-status-dot is-playing" aria-hidden="true"></span>Now playing</td>
+        <td><span class="queue-status-dot is-playing" aria-hidden="true"></span>${name}</td>
         <td class="queue-clock-cell">${renderClockMarkup(knownDurationMs)}</td>
-        <td class="text-muted">&mdash;</td>
     </tr>`;
 }
 
-function renderUpcomingRow(row) {
-    const durationText = row.durationSeconds != null
-        ? `${row.durationSeconds.toFixed(1)}s`
-        : '<span class="text-muted">&mdash;</span>';
+/**
+ * A row already admitted into zoneQueueEngine's real per-zone FIFO (queuedByZone) is
+ * genuinely different from a merely-projected future occurrence: it's blocked on the zone
+ * clearing, not counting down to a future due moment - its own dueAt is often already in
+ * the past the instant two schedules land on the same moment (the later one waits its
+ * turn), which is exactly why showing a countdown for it drove the "Fires" text into
+ * negative numbers. Showing "Waiting" instead is both more honest and sidesteps the
+ * negative-countdown case entirely, rather than needing to clamp it.
+ */
+function renderFiresCell(row) {
+    if (row.isWaiting) {
+        return '<span class="text-muted" data-bs-toggle="tooltip" data-bs-placement="top" ' +
+            'data-bs-title="Queued - will play as soon as the zone clears.">Waiting</span>';
+    }
+    const iso = new Date(row.dueAtMs).toISOString();
+    // A projected occurrence can already be (very briefly) overdue at first paint if it's
+    // due right as this card loads/re-renders - same "hold, don't go negative" rule tickZone
+    // applies on every subsequent tick, just needing a starting value here too.
+    const text = row.dueAtMs - Date.now() <= 0 ? '<span class="text-muted">due now</span>' : TimeFormat.formatNextFire(iso);
+    return `<span data-due-at="${iso}">${text}</span>`;
+}
 
+function renderUpcomingRow(row) {
+    const dotClass = row.isWaiting ? 'is-waiting' : 'is-idle';
     return `
     <tr>
-        <td>${escapeHtml(row.name)} <code>${escapeHtml(String(row.cueNumber))}</code></td>
-        <td><span class="queue-status-dot is-idle" aria-hidden="true"></span>${row.statusLabel}</td>
-        <td>${durationText}</td>
-        <td>${TimeFormat.formatNextFire(new Date(row.dueAtMs).toISOString())}</td>
+        <td><span class="queue-status-dot ${dotClass}" aria-hidden="true"></span>${escapeHtml(row.name)}</td>
+        <td>${renderFiresCell(row)}</td>
     </tr>`;
 }
 
 function normalizeQueued(entry) {
-    return {
-        dueAtMs: entry.dueAt,
-        name: entry.name || entry.cueNumber,
-        cueNumber: entry.cueNumber,
-        durationSeconds: entry.durationSeconds ?? null,
-        statusLabel: 'Queued'
-    };
+    return { dueAtMs: entry.dueAt, name: entry.name || String(entry.cueNumber), isWaiting: true };
 }
 
 function normalizeUpcoming(occurrence) {
     return {
         dueAtMs: new Date(occurrence.dueAt).getTime(),
         name: occurrence.cueDisplayName || occurrence.name || occurrence.qlabCueNumber,
-        cueNumber: occurrence.qlabCueNumber,
-        durationSeconds: occurrence.durationSeconds ?? null,
-        statusLabel: 'Scheduled'
+        isWaiting: false
     };
 }
 
@@ -156,12 +188,12 @@ function renderZoneCard(zone) {
     const merged = queued.concat(upcoming).sort((a, b) => a.dueAtMs - b.dueAtMs);
 
     const rows = [];
-    if (occupancy) rows.push(renderNowPlayingRow(occupancy));
+    if (occupancy) rows.push(renderOccupancyRow(occupancy));
 
     if (!occupancy && merged.length === 0) {
         rows.push(`
         <tr class="text-muted">
-            <td colspan="4" class="text-center py-4"><i class="fas fa-calendar-check me-2"></i>Nothing scheduled for this zone yet.</td>
+            <td colspan="2" class="text-center py-4"><i class="fas fa-calendar-check me-2"></i>Nothing scheduled for this zone yet.</td>
         </tr>`);
     } else {
         merged.forEach((row) => rows.push(renderUpcomingRow(row)));
@@ -171,7 +203,7 @@ function renderZoneCard(zone) {
     if (hasMore) {
         rows.push(`
         <tr data-zone-sentinel="${escapeHtml(zone)}">
-            <td colspan="4" class="text-center text-muted py-2"><i class="fas fa-spinner fa-spin me-1"></i>Loading more&hellip;</td>
+            <td colspan="2" class="text-center text-muted py-2"><i class="fas fa-spinner fa-spin me-1"></i>Loading more&hellip;</td>
         </tr>`);
     }
 
@@ -184,24 +216,41 @@ function renderAllZoneCards() {
     zoneNames().forEach(renderZoneCard);
 }
 
-/** Recomputes every visible countdown purely from cached firedAt/knownDurationMs - no
- *  network call, same "cheap local tick" discipline as schedules_list.js. */
+/** Recomputes every visible countdown purely from cached data - no network call, same
+ *  "cheap local tick" discipline as schedules_list.js's renderNextFireCells. Covers both
+ *  the pinned now-playing row's draining clock AND every upcoming/queued row's "Fires"
+ *  text (previously only the clock ticked - the Fires column sat frozen at its
+ *  render-time value instead of counting down like the Schedules page's Next Fire
+ *  column does). */
 function tickZone(zone) {
-    const row = document.querySelector(`tbody[data-zone-tbody="${CSS.escape(zone)}"] tr[data-role="now-playing"]`);
-    if (!row || row.dataset.knownDurationMs === undefined || row.dataset.knownDurationMs === '') return;
+    const tbody = document.querySelector(`tbody[data-zone-tbody="${CSS.escape(zone)}"]`);
+    if (!tbody) return;
 
-    const knownDurationMs = Number(row.dataset.knownDurationMs);
-    const expectedEndAt = Number(row.dataset.expectedEndAt);
-    const remaining = Math.max(0, expectedEndAt - Date.now());
-    const pct = knownDurationMs > 0 ? Math.round((remaining / knownDurationMs) * 100) : 0;
+    const nowPlayingRow = tbody.querySelector('tr[data-role="now-playing"]');
+    if (nowPlayingRow && nowPlayingRow.dataset.knownDurationMs !== undefined && nowPlayingRow.dataset.knownDurationMs !== '') {
+        const knownDurationMs = Number(nowPlayingRow.dataset.knownDurationMs);
+        const expectedEndAt = Number(nowPlayingRow.dataset.expectedEndAt);
+        const remaining = Math.max(0, expectedEndAt - Date.now());
+        const pct = knownDurationMs > 0 ? Math.round((remaining / knownDurationMs) * 100) : 0;
 
-    const fill = row.querySelector('.queue-clock-fill');
-    const time = row.querySelector('.queue-clock-time');
-    if (fill) {
-        fill.style.width = `${pct}%`;
-        fill.classList.toggle('is-ending', pct <= 15);
+        const fill = nowPlayingRow.querySelector('.queue-clock-fill');
+        const time = nowPlayingRow.querySelector('.queue-clock-time');
+        if (fill) {
+            fill.style.width = `${pct}%`;
+            fill.classList.toggle('is-ending', pct <= 15);
+        }
+        if (time) time.textContent = TimeFormat.formatClockTime(remaining);
     }
-    if (time) time.textContent = TimeFormat.formatClockTime(remaining);
+
+    tbody.querySelectorAll('[data-due-at]').forEach((el) => {
+        // Once due, hold the last-rendered text rather than counting on into negative
+        // numbers (same guard schedules_list.js's renderNextFireCells applies) - this
+        // element only exists on non-waiting rows in the first place (see
+        // renderFiresCell), so a brief overdue window here just means the next
+        // queue_state_update/queue_event hasn't caught up yet, not a real bug.
+        if (new Date(el.dataset.dueAt).getTime() - Date.now() <= 0) return;
+        el.innerHTML = TimeFormat.formatNextFire(el.dataset.dueAt);
+    });
 }
 
 function tickAll() {

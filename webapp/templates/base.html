@@ -45,9 +45,9 @@ Block areas for child templates: title, additional_css, content, scripts
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {% if request.url.path.startswith('/queue') %}active{% endif %}"
+                        <a class="nav-link {% if request.url.path.startswith('/queues') %}active{% endif %}"
                            href="{{ url_for('queue_visualizer') }}">
-                            <i class="fas fa-stream me-1"></i> Zone Queue
+                            <i class="fas fa-stream me-1"></i> Zone Queues
                         </a>
                     </li>
                     <li class="nav-item">

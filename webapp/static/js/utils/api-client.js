@@ -291,7 +291,7 @@ class HistoryAPI extends APIClient {
 }
 
 /**
- * Zone queue visualizer API operations (/queue) - live occupancy/queued snapshot plus
+ * Zone queue visualizer API operations (/queues) - live occupancy/queued snapshot plus
  * paginated future occurrences per zone. The page's live updates arrive over SocketIO
  * (queue_state_update/queue_event, see queue_visualizer.js) - these two calls only serve
  * the initial page load and each zone's infinite-scroll "load next batch" requests.
