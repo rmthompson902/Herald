@@ -8,8 +8,8 @@ Both services run under **launchd** on the same Mac as QLab. The plist templates
 Two per-user LaunchAgents (per-user, not system-wide, since QLab only runs in a logged-in GUI
 session):
 
-- `com.sitewide-audio-messaging.node-red` — the scheduling engine.
-- `com.sitewide-audio-messaging.webapp` — the FastAPI UI.
+- `com.herald.node-red` — the scheduling engine.
+- `com.herald.webapp` — the FastAPI UI.
 
 Both auto-start at login (`RunAtLoad`) and auto-restart on crash (`KeepAlive`), with a 10s
 `ThrottleInterval` floor so a persistent failure crash-loops at a bounded rate. There is **no
@@ -27,11 +27,11 @@ is not managed by either plist.
    ```
 2. **Copy and load:**
    ```bash
-   cp deploy/launchd/com.sitewide-audio-messaging.node-red.plist ~/Library/LaunchAgents/
-   cp deploy/launchd/com.sitewide-audio-messaging.webapp.plist ~/Library/LaunchAgents/
-   launchctl load ~/Library/LaunchAgents/com.sitewide-audio-messaging.node-red.plist
-   launchctl load ~/Library/LaunchAgents/com.sitewide-audio-messaging.webapp.plist
-   launchctl list | grep sitewide-audio-messaging
+   cp deploy/launchd/com.herald.node-red.plist ~/Library/LaunchAgents/
+   cp deploy/launchd/com.herald.webapp.plist ~/Library/LaunchAgents/
+   launchctl load ~/Library/LaunchAgents/com.herald.node-red.plist
+   launchctl load ~/Library/LaunchAgents/com.herald.webapp.plist
+   launchctl list | grep herald
    ```
    A real PID + exit status `0` means running. A `-` PID + nonzero exit means it's crashing on
    startup — check `logs/launchd-*-error.log` (the TCC gotcha below is the most likely cause).
@@ -54,8 +54,8 @@ Node-RED's own console output.
 Don't use a bare `kill` — it races `KeepAlive`. Use the agent-aware restart:
 
 ```bash
-launchctl kickstart -k gui/$(id -u)/com.sitewide-audio-messaging.node-red
-launchctl kickstart -k gui/$(id -u)/com.sitewide-audio-messaging.webapp
+launchctl kickstart -k gui/$(id -u)/com.herald.node-red
+launchctl kickstart -k gui/$(id -u)/com.herald.webapp
 ```
 
 ## Operational behavior
@@ -89,18 +89,18 @@ this machine; if it ever does elsewhere, same fix with the path from `which node
 
 **Stop for now** (stays installed — resumes next login unless you also remove the plists):
 ```bash
-launchctl unload ~/Library/LaunchAgents/com.sitewide-audio-messaging.node-red.plist
-launchctl unload ~/Library/LaunchAgents/com.sitewide-audio-messaging.webapp.plist
+launchctl unload ~/Library/LaunchAgents/com.herald.node-red.plist
+launchctl unload ~/Library/LaunchAgents/com.herald.webapp.plist
 ```
 
 **Fully remove** (as above, then delete the copies):
 ```bash
-rm ~/Library/LaunchAgents/com.sitewide-audio-messaging.*.plist
+rm ~/Library/LaunchAgents/com.herald.*.plist
 ```
 
 **Verify nothing's left** — don't just trust the commands succeeded:
 ```bash
-launchctl list | grep sitewide-audio-messaging   # expect no output
+launchctl list | grep herald   # expect no output
 lsof -i :1880 -i :8000                            # expect no output
 ```
 

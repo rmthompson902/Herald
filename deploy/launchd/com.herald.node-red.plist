@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.sitewide-audio-messaging.node-red</string>
+    <string>com.herald.node-red</string>
 
     <key>ProgramArguments</key>
     <array>

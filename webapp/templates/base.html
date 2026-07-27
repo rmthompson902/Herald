@@ -10,7 +10,7 @@ Block areas for child templates: title, additional_css, content, scripts
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Sitewide Audio Messaging{% endblock %}</title>
+    <title>{% block title %}Herald{% endblock %}</title>
 
     <link rel="stylesheet" href="{{ url_for('static', path='vendor/fonts/fonts.css') }}">
     <link href="{{ url_for('static', path='vendor/bootstrap/bootstrap.min.css') }}" rel="stylesheet">
@@ -23,7 +23,7 @@ Block areas for child templates: title, additional_css, content, scripts
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container">
             <a class="navbar-brand" href="{{ url_for('schedules_list') }}">
-                Sitewide Audio Messaging
+                Herald
             </a>
 
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -67,7 +67,7 @@ Block areas for child templates: title, additional_css, content, scripts
 
     <footer class="footer py-3">
         <div class="container text-center">
-            <span class="text-muted">Sitewide Audio Messaging &mdash; QLab scheduling layer</span>
+            <span class="text-muted">Herald &mdash; QLab scheduling &amp; messaging</span>
         </div>
     </footer>
 

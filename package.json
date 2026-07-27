@@ -1,5 +1,5 @@
 {
-  "name": "sitewide-audio-messaging",
+  "name": "herald",
   "version": "0.1.0",
   "private": true,
   "description": "QLab scheduled audio messaging system: Node-RED + cron-plus + SQLite + OSC scheduling layer for QLab.",

@@ -1,4 +1,4 @@
-# Sitewide Audio Messaging
+# Herald
 
 A scheduling and emergency-messaging layer for [QLab](https://qlab.app). Operators schedule
 recurring audio announcements — safety messages, closing calls, wayfinding — across independent

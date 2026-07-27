@@ -33,7 +33,7 @@ log = logging.getLogger(__name__)
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 
-app = FastAPI(title="Sitewide Audio Messaging")
+app = FastAPI(title="Herald")
 
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
