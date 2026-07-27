@@ -116,12 +116,21 @@ describe('resolveZoneDetailsForCue', () => {
     });
   });
 
+  it("returns the cue's own QLab name as cueDisplayName, for both a leaf and a Group", async () => {
+    const protocol = fakeProtocol();
+    const leaf = await resolveZoneDetailsForCue(protocol, patchMap, '1101');
+    expect(leaf.cueDisplayName).toBe('Message 1');
+    const group = await resolveZoneDetailsForCue(protocol, patchMap, '9901');
+    expect(group.cueDisplayName).toBe('Global Message 1');
+  });
+
   it('resolves a leaf cue on an unmapped patch to zero zones, surfaced in unmappedLeafCues', async () => {
     const protocol = fakeProtocol();
     await expect(resolveZoneDetailsForCue(protocol, patchMap, '1201')).resolves.toEqual({
       zones: [],
       zoneDetails: {},
-      unmappedLeafCues: [{ cueNumber: '1201', patchId: 2 }]
+      unmappedLeafCues: [{ cueNumber: '1201', patchId: 2 }],
+      cueDisplayName: 'Music track (unmapped patch)'
     });
   });
 
@@ -183,7 +192,8 @@ describe('resolveZoneDetailsForCue', () => {
     await expect(resolveZoneDetailsForCue(protocol, patchMap, 'does-not-exist')).resolves.toEqual({
       zones: [],
       zoneDetails: {},
-      unmappedLeafCues: []
+      unmappedLeafCues: [],
+      cueDisplayName: null
     });
   });
 

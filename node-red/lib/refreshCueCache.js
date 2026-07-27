@@ -16,15 +16,17 @@
 // checks before proceeding.
 async function refreshCueCache(core, qlabCueNumber) {
   try {
-    const [duration, { zones, zoneDetails, unmappedLeafCues }, qlabInternalId] = await Promise.all([
-      core.osc.protocol.getDuration(qlabCueNumber),
-      core.zones.resolveZoneDetailsForCue(qlabCueNumber),
-      core.osc.protocol.getUniqueId(qlabCueNumber)
-    ]);
+    const [duration, { zones, zoneDetails, unmappedLeafCues, cueDisplayName }, qlabInternalId] =
+      await Promise.all([
+        core.osc.protocol.getDuration(qlabCueNumber),
+        core.zones.resolveZoneDetailsForCue(qlabCueNumber),
+        core.osc.protocol.getUniqueId(qlabCueNumber)
+      ]);
 
     const cached = core.db.cueCache.upsert(core.db.connection, {
       qlabCueNumber,
       qlabInternalId,
+      cueDisplayName,
       durationSeconds: duration,
       zones
     });
