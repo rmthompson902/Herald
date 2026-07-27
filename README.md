@@ -35,7 +35,7 @@ what is waiting behind it, and what is coming up next.
 ![Zone Queue visualizer](docs/images/zone-queues-visualizer.png)
 
 ### Automatic zone derivation
-Zones aren't tagged by hand, instead, they're **derived from each cue's QLab Messaging Audio Patch
+Zones aren't tagged by hand, instead, they're derived from each cue's QLab Messaging Audio Patch
 assignment. The one small manual config file maps a patch to a zone (and its ducking cues);
 everything else is discovered live from QLab.
 
