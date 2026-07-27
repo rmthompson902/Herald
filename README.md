@@ -91,7 +91,7 @@ the cue finishes.
 | [06 · Development](docs/06-development.md) | Repo layout, module map, running locally, tests, tooling |
 | [07 · Deployment & operations](docs/07-deployment-operations.md) | launchd auto-start, restarts, logs, troubleshooting |
 | [08 · API reference](docs/08-api-reference.md) | Node-RED internal API + FastAPI routes |
-| [ADR 0001](docs/adr/0001-zone-queue-tiebreak-policy.md) | Zone-queue tie-break policy — the full decision log |
+| [ADRs](docs/adr/README.md) | Zone-queue engine decision records (11 ADRs) — the full rationale |
 
 ## Quick start
 

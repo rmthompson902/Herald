@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Patch-rework spike: validate our assumptions about QLab's Audio Patch OSC surface against
 // a REAL, running QLab instance, now that the workspace uses one dedicated Messaging Audio
-// Patch per zone instead of a single shared crosspoint matrix (see the current plan file /
-// docs/adr/0001-zone-queue-tiebreak-policy.md for context). Deliberately standalone, no
+// Patch per zone instead of a single shared crosspoint matrix (see
+// docs/adr/0010-music-ducking.md for context). Deliberately standalone, no
 // Node-RED/lib/ dependency — mirrors scripts/phase0-qlab-spike.js's shape/discipline so
 // findings can be transcribed into test/fixtures/qlab-osc-findings.md the same way.
 //

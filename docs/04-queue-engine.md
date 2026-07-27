@@ -3,7 +3,7 @@
 [`lib/queue/zoneQueueEngine.js`](../lib/queue/zoneQueueEngine.js) enforces the central rule:
 **nothing overlaps within a zone, and unrelated zones are fully independent.** This chapter
 summarizes how it behaves today; the full decision history and edge-case rationale is in
-[ADR 0001](adr/0001-zone-queue-tiebreak-policy.md).
+[the ADR records](adr/README.md).
 
 ## The model
 
@@ -73,4 +73,4 @@ rule. Nothing about live queue state is meant to survive a restart.
 ---
 
 **Full decision history and edge-case rationale:**
-[ADR 0001 — Zone Queue Tie-Break Policy](adr/0001-zone-queue-tiebreak-policy.md).
+[the zone-queue ADR records](adr/README.md).
