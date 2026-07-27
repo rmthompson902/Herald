@@ -2,7 +2,7 @@
 
 A scheduling and emergency-messaging layer for [QLab](https://qlab.app), designed for large
 entertainment venues. Operators schedule recurring audio announcements, like safety messages, 
-losing calls, or wayfinding messages, across independent audio zones, and trigger one-tap
+closing calls, or wayfinding messages, across independent audio zones, and trigger one-tap
 Voice-of-God (VOG) emergency messages. QLab stays the sole owner of audio; this system
 owns the timing, the collision rules, and the operator interface.
 
