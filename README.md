@@ -39,16 +39,16 @@ Zones aren't tagged by hand, instead, they're **derived from each cue's QLab Mes
 assignment. The one small manual config file maps a patch to a zone (and its ducking cues);
 everything else is discovered live from QLab.
 
+### Background music playout
+QLab owns all background music playlists. Each zone has an independent playlist, and when a cue
+is triggered, the background music is automatically lowered to allow the message to be heard.
+
 ### Health-gated operation & event history
 A `/thump` heartbeat keeps the QLab OSC link alive and flips the system to a disconnected/disarmed
 state the moment QLab goes away. All business events (`fired`, `queued`, `duck_wait`, `vog_fired`,
 health transitions, …) are written to a rotating event log, surfaced in Settings.
 
 ![Settings — event log, connection status, zones admin](docs/images/settings.png)
-
-### Background music playout
-QLab owns all background music playlists. Each zone has an independent playlist, and when a cue
-is triggered, the background music is automatically lowered to allow the message to be heard.
 
 ---
 
@@ -77,7 +77,7 @@ and all writes to SQLite. Business logic lives in plain, unit-tested JavaScript 
 [`lib/`](lib), not in flow wiring.
 - **The FastAPI webapp** is the operator-facing UI. It reads SQLite directly for anything
   displayable and proxies every write and live-OSC action to Node-RED, so validation and
-  scheduling stay single-sourced in `lib/`.
+  scheduling stay single-sourced in [`lib/`](lib).
 
 **How it works in 20 seconds:** a schedule comes due, Node-RED checks QLab is armed, the cue is
 enqueued into each of its zones' FIFOs, the zone ducks its background music, the engine confirms

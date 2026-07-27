@@ -125,7 +125,7 @@ function renderOccupancyRow(occupancy) {
         </tr>`;
   }
 
-  const name = escapeHtml(entry.name || String(entry.cueNumber));
+  const name = escapeHtml(entry.cueDisplayName || entry.name || String(entry.cueNumber));
 
   if (firedAt == null) {
     return `
@@ -181,7 +181,11 @@ function renderUpcomingRow(row) {
 }
 
 function normalizeQueued(entry) {
-  return { dueAtMs: entry.dueAt, name: entry.name || String(entry.cueNumber), isWaiting: true };
+  return {
+    dueAtMs: entry.dueAt,
+    name: entry.cueDisplayName || entry.name || String(entry.cueNumber),
+    isWaiting: true
+  };
 }
 
 function normalizeUpcoming(occurrence) {

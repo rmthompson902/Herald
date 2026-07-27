@@ -2,13 +2,20 @@
 
 const { triggerVog } = require('../../lib/vog/vogInterruptHandler');
 
-function makeDeps({ zones = ['Zone 1', 'Zone 2'], zoneDetails = {}, occupancy = {} } = {}) {
+function makeDeps({
+  zones = ['Zone 1', 'Zone 2'],
+  zoneDetails = {},
+  occupancy = {},
+  cueDisplayName = 'VO - Evacuate'
+} = {}) {
   const qlabProtocol = {
     stopCue: jest.fn().mockResolvedValue(undefined),
     getDuration: jest.fn().mockResolvedValue(12),
     getUniqueId: jest.fn().mockResolvedValue('vog-uid')
   };
-  const resolveZoneDetailsForCue = jest.fn().mockResolvedValue({ zones, zoneDetails });
+  const resolveZoneDetailsForCue = jest
+    .fn()
+    .mockResolvedValue({ zones, zoneDetails, cueDisplayName });
   const queueEngine = {
     getState: jest.fn().mockReturnValue({ occupancy, queued: {} }),
     preemptZones: jest.fn(),
@@ -107,6 +114,7 @@ describe('vogInterruptHandler.triggerVog', () => {
         zoneDetails: {},
         durationSeconds: 12,
         name: 'Evacuate All',
+        cueDisplayName: 'VO - Evacuate',
         source: 'vog'
       })
     );

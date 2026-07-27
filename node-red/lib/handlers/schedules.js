@@ -55,7 +55,8 @@ function createScheduleHandlers({ core, cronSyncMessages, refreshCueCache }) {
         zoneDetails: cue.zoneDetails,
         durationSeconds: cue.durationSeconds,
         dueAt: Date.now(),
-        name: schedule.name
+        name: schedule.name,
+        cueDisplayName: cue.cueDisplayName
       });
 
       return {
@@ -201,7 +202,8 @@ function createScheduleHandlers({ core, cronSyncMessages, refreshCueCache }) {
         zoneDetails: cue.zoneDetails,
         durationSeconds: cue.durationSeconds,
         dueAt: Date.now(),
-        name: schedule.name
+        name: schedule.name,
+        cueDisplayName: cue.cueDisplayName
       });
 
       msg.statusCode = 200;

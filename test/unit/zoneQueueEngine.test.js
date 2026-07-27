@@ -659,6 +659,31 @@ describe('ZoneQueueEngine', () => {
     await bPromise;
   });
 
+  it('getState carries both name (schedule/VOG label) and cueDisplayName (QLab cue name) through independently, for both occupancy and queued entries', async () => {
+    const protocol = fakeProtocol();
+    const engine = makeEngine(protocol);
+
+    await engine.enqueue({
+      ...entry('a', ['Zone 1'], { durationSeconds: 10 }),
+      name: 'Morning Announcement',
+      cueDisplayName: 'VO - Morning Message'
+    });
+    const bPromise = engine.enqueue({
+      ...entry('b', ['Zone 1'], { dueAt: 1 }),
+      name: 'Evening Announcement',
+      cueDisplayName: 'VO - Evening Message'
+    });
+
+    const state = engine.getState();
+    expect(state.occupancy['Zone 1'].entry.name).toBe('Morning Announcement');
+    expect(state.occupancy['Zone 1'].entry.cueDisplayName).toBe('VO - Morning Message');
+    expect(state.queued['Zone 1'][0].name).toBe('Evening Announcement');
+    expect(state.queued['Zone 1'][0].cueDisplayName).toBe('VO - Evening Message');
+
+    await jest.advanceTimersByTimeAsync(10000);
+    await bPromise;
+  });
+
   it("getState reports knownDurationMs: null (never the fallback duration) when a fired entry's duration was never resolved", async () => {
     const protocol = fakeProtocol();
     const engine = makeEngine(protocol);

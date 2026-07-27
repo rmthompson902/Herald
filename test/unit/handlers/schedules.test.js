@@ -40,6 +40,7 @@ function makeDeps(overrides = {}) {
       zones: ['Zone 1'],
       zoneDetails: {},
       durationSeconds: 5,
+      cueDisplayName: 'VO - Cue Name',
       unmappedLeafCues: []
     }))
   };
@@ -76,7 +77,13 @@ describe('onDue', () => {
     const { onDue } = createScheduleHandlers(deps);
     const out = await onDue({ topic: 'sched-7' }, node);
     expect(core.queue.enqueue).toHaveBeenCalledWith(
-      expect.objectContaining({ dedupeKey: 'schedule-7', scheduleId: 7, cueNumber: '101' })
+      expect.objectContaining({
+        dedupeKey: 'schedule-7',
+        scheduleId: 7,
+        cueNumber: '101',
+        name: 'Safety',
+        cueDisplayName: 'VO - Cue Name'
+      })
     );
     expect(out.payload).toMatch(/^Fired 101/);
   });
@@ -211,6 +218,16 @@ describe('playNow', () => {
     const out = await playNow({ req: { params: { id: '1' } } }, node);
     expect(out.statusCode).toBe(200);
     expect(out.payload.queued).toBe(true);
+  });
+
+  it('enqueues with both the schedule name and the live cueDisplayName from QLab', async () => {
+    const { deps, core, node } = makeDeps();
+    core.db.schedules.getById.mockReturnValue({ id: 1, qlabCueNumber: '101', name: 'Safety' });
+    const { playNow } = createScheduleHandlers(deps);
+    await playNow({ req: { params: { id: '1' } } }, node);
+    expect(core.queue.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Safety', cueDisplayName: 'VO - Cue Name' })
+    );
   });
 });
 
