@@ -9,7 +9,7 @@ owns the timing, the collision rules, and the operator interface.
 Featuring multi-zone support, FIFO queueing within a collision prevention engine, and an
 intuitive GUI, Herald runs entirely on the same Mac as QLab, via loopback OSC.
 
-An example, pre-wired QLab workspace in included at [`media/00 qlab workspaces`](00 qlab workspaces).
+An example, pre-wired QLab workspace in included at [`media/00 qlab workspaces/`](00 qlab workspaces).
 
 ---
 
