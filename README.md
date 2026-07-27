@@ -1,12 +1,12 @@
 # Herald - The Cue Scheduler for QLab
 
-A scheduling and emergency-messaging layer for [QLab](https://qlab.app). Operators schedule
-recurring audio announcements, like safety messages, closing calls, or wayfinding messages,
-across independent audio **zones**, and trigger one-tap **Voice-of-God (VOG)** emergency
-messages. QLab stays the sole owner of audio; this system owns the timing, the collision
-rules, and the operator interface.
+A scheduling and emergency-messaging layer for [QLab](https://qlab.app), designed for large
+entertainment venues. Operators schedule recurring audio announcements, like safety messages, 
+losing calls, or wayfinding messages, across independent audio zones, and trigger one-tap
+Voice-of-God (VOG) emergency messages. QLab stays the sole owner of audio; this system
+owns the timing, the collision rules, and the operator interface.
 
-Featuring multi-zone support, FIFO queueing withing a collision prevention engine, and an
+Featuring multi-zone support, FIFO queueing within a collision prevention engine, and an
 intuitive GUI, Herald runs entirely on the same Mac as QLab, via loopback OSC.
 
 ---
@@ -69,12 +69,12 @@ flowchart LR
 
 Three cooperating processes:
 
-- **QLab** owns all audio. Media, cues, routing, fades, and ducking.
-- **Node-RED** (headless — no dashboard of its own) owns scheduling (cron-plus), the per-zone queue
-  engine, OSC to QLab, and all writes to SQLite. Business logic lives in plain, unit-tested
-  JavaScript modules under [`lib/`](lib), not in flow wiring.
-- **The FastAPI webapp** is the operator-facing UI. It **reads SQLite directly** for anything
-  displayable and **proxies every write and live-OSC action to Node-RED**, so validation and
+- **QLab** owns all audio: media, cues, routing, fades, and ducking.
+- **Node-RED** (headless) owns scheduling (cron-plus), the per-zone queue engine, OSC to QLab,
+and all writes to SQLite. Business logic lives in plain, unit-tested JavaScript modules under
+[`lib/`](lib), not in flow wiring.
+- **The FastAPI webapp** is the operator-facing UI. It reads SQLite directly for anything
+  displayable and proxies every write and live-OSC action to Node-RED, so validation and
   scheduling stay single-sourced in `lib/`.
 
 **How it works in 20 seconds:** a schedule comes due, Node-RED checks QLab is armed, the cue is
