@@ -1278,5 +1278,101 @@
     "x": 720,
     "y": 1600,
     "wires": []
+  },
+  {
+    "id": "httpin_queue_state",
+    "type": "http in",
+    "z": "tab_api",
+    "name": "GET /api/queue/state",
+    "url": "/api/queue/state",
+    "method": "get",
+    "upload": false,
+    "swaggerDoc": "",
+    "x": 200,
+    "y": 1660,
+    "wires": [
+      [
+        "fn_queue_state"
+      ]
+    ]
+  },
+  {
+    "id": "fn_queue_state",
+    "type": "function",
+    "z": "tab_api",
+    "name": "live occupancy + queued snapshot",
+    "func": "const core = global.get('core');\n\nmsg.statusCode = 200;\nmsg.payload = { status: 'success', ...core.queue.getState() };\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 470,
+    "y": 1660,
+    "wires": [
+      [
+        "httpresp_queue_state"
+      ]
+    ]
+  },
+  {
+    "id": "httpresp_queue_state",
+    "type": "http response",
+    "z": "tab_api",
+    "name": "",
+    "statusCode": "",
+    "headers": {},
+    "x": 730,
+    "y": 1660,
+    "wires": []
+  },
+  {
+    "id": "httpin_queue_upcoming",
+    "type": "http in",
+    "z": "tab_api",
+    "name": "GET /api/queue/upcoming",
+    "url": "/api/queue/upcoming",
+    "method": "get",
+    "upload": false,
+    "swaggerDoc": "",
+    "x": 210,
+    "y": 1720,
+    "wires": [
+      [
+        "fn_queue_upcoming"
+      ]
+    ]
+  },
+  {
+    "id": "fn_queue_upcoming",
+    "type": "function",
+    "z": "tab_api",
+    "name": "paginated upcoming occurrences for a zone",
+    "func": "const core = global.get('core');\nconst zone = msg.req.query.zone;\nconst offset = Number(msg.req.query.offset || 0);\nconst count = Number(msg.req.query.count || 25);\n\nif (!zone) {\n    msg.statusCode = 400;\n    msg.payload = { status: 'error', message: 'zone is required' };\n    return msg;\n}\n\n// A schedule's own next-due moment is already represented by a live occupancy/queued\n// entry in this zone (see zoneUpcomingOccurrences.js's dedupe) - collect those schedule\n// ids so the projection doesn't show that same due moment a second time.\nconst state = core.queue.getState();\nconst liveEntries = [\n    ...(state.queued[zone] || []),\n    ...(state.occupancy[zone] ? [state.occupancy[zone].entry] : [])\n];\nconst liveScheduleIds = new Set(liveEntries.map((e) => e.scheduleId).filter((id) => id != null));\n\nconst result = core.scheduling.zoneUpcomingOccurrences.getUpcomingOccurrencesForZone(\n    core.db.connection,\n    zone,\n    {\n        schedulesRepo: core.db.schedules,\n        cueCacheRepo: core.db.cueCache,\n        nextOccurrences: core.scheduling.occurrenceCalculator.nextOccurrences\n    },\n    { offset, count, liveScheduleIds }\n);\n\nmsg.statusCode = 200;\nmsg.payload = { status: 'success', zone, ...result };\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 500,
+    "y": 1720,
+    "wires": [
+      [
+        "httpresp_queue_upcoming"
+      ]
+    ]
+  },
+  {
+    "id": "httpresp_queue_upcoming",
+    "type": "http response",
+    "z": "tab_api",
+    "name": "",
+    "statusCode": "",
+    "headers": {},
+    "x": 780,
+    "y": 1720,
+    "wires": []
   }
 ]

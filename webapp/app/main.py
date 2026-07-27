@@ -28,7 +28,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.node_red_client import NodeRedUnavailableError, node_red_client
-from app.routers import cues_api, history_api, pages, schedules_api, status_api, vog_api, zones_api
+from app.routers import cues_api, history_api, pages, queue_api, schedules_api, status_api, vog_api, zones_api
 
 log = logging.getLogger(__name__)
 
@@ -45,6 +45,7 @@ app.include_router(cues_api.router)
 app.include_router(status_api.router)
 app.include_router(history_api.router)
 app.include_router(zones_api.router)
+app.include_router(queue_api.router)
 
 # SocketIO relay: the browser only ever talks to this server, never to
 # Node-RED directly. Mounted at /socket.io, which is the client library's
@@ -56,6 +57,8 @@ _last_health: dict | None = None
 _poll_task: asyncio.Task | None = None
 _queue_events_poll_task: asyncio.Task | None = None
 _last_queue_event_at: str | None = None
+_queue_state_poll_task: asyncio.Task | None = None
+_last_queue_state: dict | None = None
 
 
 async def _poll_and_broadcast_health() -> None:
@@ -87,6 +90,30 @@ async def _poll_and_broadcast_health() -> None:
         await asyncio.sleep(settings.health_poll_interval_seconds)
 
 
+async def _poll_and_broadcast_queue_state() -> None:
+    """Backs the zone queue visualizer's live occupancy/queued display (see
+    static/js/queue_visualizer.js). There is no Node-RED -> FastAPI push transport -
+    "SocketIO push" from the browser's perspective is still this same poll-Node-RED/
+    re-emit-over-sio pattern as _poll_and_broadcast_health above, just for a different
+    payload. Diffs against the last snapshot so idle zones don't cause a socket emit to
+    every connected browser on every poll tick."""
+    global _last_queue_state
+    while True:
+        try:
+            state = await node_red_client.get_queue_state()
+        except NodeRedUnavailableError:
+            state = {"status": "error", "occupancy": {}, "queued": {}}
+
+        try:
+            if state != _last_queue_state:
+                _last_queue_state = state
+                await sio.emit("queue_state_update", state)
+        except Exception:
+            log.exception("queue state poller: unexpected error broadcasting queue_state_update")
+
+        await asyncio.sleep(settings.health_poll_interval_seconds)
+
+
 async def _poll_and_broadcast_queue_events() -> None:
     """A queued play-now/schedule fire reports 'queued' in its own HTTP response, but the
     actual fire can happen well after that response already went out - the operator would
@@ -99,6 +126,12 @@ async def _poll_and_broadcast_queue_events() -> None:
         (e.g. its Audio Patch has no live output device - QLab doesn't deny the OSC start in
         that case, so this can only be caught after the fact). This is the one case where the
         operator needs to be told something went WRONG, not just that a queued item played.
+
+    Also relays every event (not just the two toast-worthy ones above) as a raw
+    'queue_event' for the zone queue visualizer (static/js/queue_visualizer.js) to react
+    to - e.g. a 'queued'/'dropped_stale'/'zone_freed' event means a zone's cached
+    upcoming-batch is now stale and needs re-fetching, well before the next
+    queue_state_update poll tick would otherwise reveal that.
     """
     global _last_queue_event_at
     while True:
@@ -118,6 +151,8 @@ async def _poll_and_broadcast_queue_events() -> None:
             try:
                 entry = event["entry"]
                 extra = event.get("extra") or {}
+
+                await sio.emit("queue_event", event)
 
                 if event["event"] == "fired" and extra.get("afterQueue"):
                     await sio.emit(
@@ -145,14 +180,15 @@ async def _poll_and_broadcast_queue_events() -> None:
 
 @app.on_event("startup")
 async def start_health_poller() -> None:
-    global _poll_task, _queue_events_poll_task
+    global _poll_task, _queue_events_poll_task, _queue_state_poll_task
     _poll_task = asyncio.create_task(_poll_and_broadcast_health())
     _queue_events_poll_task = asyncio.create_task(_poll_and_broadcast_queue_events())
+    _queue_state_poll_task = asyncio.create_task(_poll_and_broadcast_queue_state())
 
 
 @app.on_event("shutdown")
 async def stop_health_poller() -> None:
-    for task in (_poll_task, _queue_events_poll_task):
+    for task in (_poll_task, _queue_events_poll_task, _queue_state_poll_task):
         if task is not None:
             task.cancel()
             with contextlib.suppress(asyncio.CancelledError):

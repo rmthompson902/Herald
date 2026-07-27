@@ -560,11 +560,24 @@ describe('ZoneQueueEngine', () => {
     const state = engine.getState();
     expect(state.occupancy['Zone 1'].entry.id).toBe('a');
     expect(state.occupancy['Zone 1'].confirmed).toBe(true);
+    expect(state.occupancy['Zone 1'].firedAt).toEqual(expect.any(Number));
+    expect(state.occupancy['Zone 1'].knownDurationMs).toBe(10000);
     expect(state.queued['Zone 1']).toHaveLength(1);
     expect(state.queued['Zone 1'][0].id).toBe('b');
 
     await jest.advanceTimersByTimeAsync(10000);
     await bPromise;
+  });
+
+  it('getState reports knownDurationMs: null (never the fallback duration) when a fired entry\'s duration was never resolved', async () => {
+    const protocol = fakeProtocol();
+    const engine = makeEngine(protocol);
+
+    await engine.enqueue(entry('a', ['Zone 1'], { durationSeconds: null }));
+
+    const state = engine.getState();
+    expect(state.occupancy['Zone 1'].knownDurationMs).toBeNull();
+    expect(state.occupancy['Zone 1'].firedAt).toEqual(expect.any(Number));
   });
 
   it('getRecentEvents returns a chronological, optionally-filtered event log', async () => {

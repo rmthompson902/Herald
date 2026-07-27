@@ -108,6 +108,12 @@ class NodeRedClient:
         params = {"since": since} if since else None
         return await self._request("GET", "/queue/events", params=params)
 
+    async def get_queue_state(self) -> dict:
+        return await self._request("GET", "/queue/state")
+
+    async def get_zone_upcoming(self, zone: str, offset: int = 0, count: int = 25) -> dict:
+        return await self._request("GET", "/queue/upcoming", params={"zone": zone, "offset": offset, "count": count})
+
     # Zones (see lib/zones/audioPatchMap.js) - the only manual config in the system. Every
     # write here hot-reloads Node-RED's in-memory zone config immediately (core.zones.reload()),
     # no restart needed.

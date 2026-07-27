@@ -26,6 +26,8 @@ describe('createCore', () => {
     expect(typeof core.osc.protocol.getDuration).toBe('function');
     expect(core.health.getState()).toBe('unknown'); // not started
     expect(typeof core.scheduling.cronSync.rebuildAll).toBe('function');
+    expect(typeof core.scheduling.zoneUpcomingOccurrences.getUpcomingOccurrencesForZone).toBe('function');
+    expect(typeof core.queue.getState).toBe('function');
 
     core.db.connection.close();
   });
