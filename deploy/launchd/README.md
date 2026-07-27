@@ -66,10 +66,30 @@ launchctl kickstart -k gui/$(id -u)/com.sitewide-audio-messaging.node-red
 launchctl kickstart -k gui/$(id -u)/com.sitewide-audio-messaging.webapp
 ```
 
-## Uninstall / stop
+## Stop / uninstall
 
+**Stop for now** (stays installed - `RunAtLoad`/`KeepAlive` resume next login unless you also
+remove the plists below):
+```
+launchctl unload ~/Library/LaunchAgents/com.sitewide-audio-messaging.node-red.plist
+launchctl unload ~/Library/LaunchAgents/com.sitewide-audio-messaging.webapp.plist
+```
+
+**Fully remove** (same as above, then delete the copies):
 ```
 launchctl unload ~/Library/LaunchAgents/com.sitewide-audio-messaging.node-red.plist
 launchctl unload ~/Library/LaunchAgents/com.sitewide-audio-messaging.webapp.plist
 rm ~/Library/LaunchAgents/com.sitewide-audio-messaging.*.plist
 ```
+
+Verify nothing's left running, don't just trust the commands succeeded:
+```
+launchctl list | grep sitewide-audio-messaging   # expect no output
+lsof -i :1880 -i :8000                           # expect no output
+```
+
+Optional, neither required nor harmful to skip:
+- The Full Disk Access grants from the TCC gotcha above (System Settings -> Privacy &
+  Security -> Full Disk Access) - only matters if this machine won't run the webapp this way
+  again.
+- `logs/launchd-*.log` / `-error.log` - just history, not config; delete or leave them.
