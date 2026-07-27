@@ -28,7 +28,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.node_red_client import NodeRedUnavailableError, node_red_client
-from app.routers import cues_api, history_api, pages, queue_api, schedules_api, status_api, vog_api, zones_api
+from app.routers import cues_api, history_api, pages, queue_api, schedules_api, vog_api, zones_api
 
 log = logging.getLogger(__name__)
 
@@ -42,7 +42,6 @@ app.include_router(pages.router)
 app.include_router(schedules_api.router)
 app.include_router(vog_api.router)
 app.include_router(cues_api.router)
-app.include_router(status_api.router)
 app.include_router(history_api.router)
 app.include_router(zones_api.router)
 app.include_router(queue_api.router)
@@ -62,10 +61,9 @@ _last_queue_state: dict | None = None
 
 
 async def _poll_and_broadcast_health() -> None:
-    """Background poller mirroring UPS-Mgmt's daemon-thread health-polling
-    pattern, adapted to an asyncio task since this app's whole I/O stack
-    (httpx, SocketIO) is already async - a raw OS thread would just add a
-    second event loop for no benefit here."""
+    """Background poller for QLab connection health, run as an asyncio task since
+    this app's whole I/O stack (httpx, SocketIO) is already async - a raw OS thread
+    would just add a second event loop for no benefit here."""
     global _last_health
     while True:
         try:

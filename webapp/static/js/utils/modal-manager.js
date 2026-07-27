@@ -1,6 +1,7 @@
 /**
- * Modal Manager Utility
- * Manages Bootstrap modals with consistent behavior
+ * Wraps Bootstrap's modal API so pages open/close modals and wire up the generic
+ * confirmation dialog (showConfirmation) the same way everywhere, instead of each
+ * page reaching for `new bootstrap.Modal(...)` directly.
  */
 /* exported ModalManager */
 class ModalManager {

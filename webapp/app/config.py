@@ -1,9 +1,7 @@
 """
-App settings, following the same typed-env-var-with-defaults spirit as
-lib/'s Node-RED settings.js and UPS-Mgmt's Config.get_env() (see
-docs/claude-plan.md). pydantic-settings gives the same guarantee - every
-setting has an explicit type and a safe default - without hand-rolling the
-conversion helper.
+App settings via pydantic-settings: every setting has an explicit type and a
+safe default, overridable by env var or webapp/.env. Same typed-env-var spirit
+as the Node-RED side's settings.js, without hand-rolling a conversion helper.
 """
 
 from pathlib import Path

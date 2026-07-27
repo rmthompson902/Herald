@@ -1,5 +1,35 @@
 # QLab Scheduled Audio Messaging System — Implementation Plan
 
+## ⚠️ Post-implementation drift notes (added 2026-07-27) — seed for the future docs task
+
+This plan captures the **original design**. The shipped system has moved beyond it in ways
+the sections below do not yet reflect. Treat this as a **to-do list for the eventual codebase
+documentation**, not a description of current behavior. Known divergences:
+
+- **Navigation / pages.** The plan's nav (Schedules / VOG / Event History / Connection Status)
+  is now **Schedules / VOG Messages / Zone Queues / Settings**. The separate `/history` and
+  `/status` pages were folded into **`/settings`** (event-log accordion + connection status +
+  zones admin). The one-shot `GET /api/status` endpoint that backed the old status page, plus
+  its `StatusAPI` JS client, were removed as dead code.
+- **New features not in this plan:** a **Zone Queue visualizer** (`/queues` — live per-zone
+  occupancy + upcoming, pushed over SocketIO) and a full **Zones admin CRUD** UI
+  (`config/audio-patch-map.json` edited live through the webapp and hot-reloaded via
+  `core.zones.reload()`, no Node-RED restart).
+- **Node-RED internal API is ~25 endpoints, not the 13** in the "Frontend Architecture" table.
+  Added since: `GET /queue/state`, `GET /queue/upcoming`, `GET /queue/events`,
+  `GET/POST/PUT/DELETE /zones` (+ `GET /zones/patches`, `GET /zones/discover`),
+  `POST /cues/refresh-all`, `POST /schedules/bulk-set-enabled`,
+  `POST /vog-messages/bulk-set-enabled`.
+- **Suspected-playback-failure detection:** the queue engine emits a
+  `suspected_playback_failure` event (a cue confirmed stopped implausibly early vs. its known
+  duration — likely a dead Audio Patch output) surfaced as a distinct browser toast.
+- **Per-zone-independent queue engine** (ADR 0001 decision 4 amendment) is the shipped model;
+  the "wait for every zone" multi-zone language in the tie-break sections is superseded.
+- **`cue_display_name`** is now populated (was a dead, never-written column at review time).
+- **Tooling/tests added in the 2026-07 codebase-hardening pass:** ESLint + Prettier (JS) and
+  Ruff (Python) with a Husky/lint-staged pre-commit hook; a pytest suite under `webapp/tests/`.
+  UPS-Mgmt references were scrubbed from code comments (this plan still mentions it as history).
+
 ## Context
 
 `project-brief.md` lays out a scheduling layer for QLab: operators need recurring/time-boxed audio messages (safety announcements, closing messages, etc.) triggered across "zones" of a venue's audio system, without hand-building every playback event in QLab. The brief proposed Node-RED + cron-plus + SQLite + OSC as the stack, with QLab remaining the sole owner of playback/audio-routing.

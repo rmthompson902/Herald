@@ -1,27 +1,15 @@
 /**
- * API Client Module
- * ================
- *
- * Centralized API communication layer for the frontend. Every method here
- * hits this app's own /api/* routes (see webapp/app/routers) - never
- * Node-RED directly. Writes and anything needing live OSC get proxied to
- * Node-RED server-side by those routes; reads that only need SQLite are
- * served directly. See Frontend Architecture in docs/claude-plan.md.
- *
- * Features:
- * - Base APIClient class with common HTTP methods (GET, POST, PUT, DELETE)
- * - ScheduleAPI, VogAPI, CueAPI, StatusAPI - domain-specific method sets
- * - Automatic JSON handling and Content-Type headers
- * - Standardized error handling with user-friendly toast messages
+ * Centralized API layer for the browser. Every method hits this app's own
+ * /api/* routes (see webapp/app/routers), never Node-RED directly - writes and
+ * anything needing the live OSC socket are proxied to Node-RED server-side,
+ * while SQLite-only reads are served directly (see Frontend Architecture in
+ * docs/claude-plan.md). Every route returns the same success/error envelope, so
+ * handleResponse() works against all of them; the subclasses below just declare
+ * each domain's own endpoints.
  */
-/* exported ScheduleAPI, VogAPI, CueAPI, StatusAPI, HistoryAPI, QueueAPI, ZoneAPI */
+/* exported ScheduleAPI, VogAPI, CueAPI, HistoryAPI, QueueAPI, ZoneAPI */
 class APIClient {
-  /**
-   * Make an API request
-   * @param {string} url - API endpoint URL
-   * @param {Object} options - Request options
-   * @returns {Promise} - API response
-   */
+  /** Core fetch wrapper: JSON in and out, throws on a non-2xx response. */
   static async request(url, options = {}) {
     const defaultOptions = {
       headers: {
@@ -47,11 +35,9 @@ class APIClient {
   }
 
   /**
-   * Handle API response and show appropriate toast messages
-   * @param {Promise} apiCall - The API call promise
-   * @param {string} successMessage - Success message for toast
-   * @param {string} errorMessage - Error message for toast
-   * @returns {Promise} - API response data or null
+   * Awaits an API call, shows a success/error toast from the response envelope,
+   * and returns the data on success or null on failure - so callers can just
+   * check `if (result)`.
    */
   static async handleResponse(
     apiCall,
@@ -81,23 +67,12 @@ class APIClient {
     }
   }
 
-  /**
-   * GET request
-   * @param {string} url - API endpoint URL
-   * @param {Object} options - Request options
-   * @returns {Promise} - API response
-   */
+  /** GET; extra options merge into the fetch init. */
   static async get(url, options = {}) {
     return this.request(url, { method: 'GET', ...options });
   }
 
-  /**
-   * POST request
-   * @param {string} url - API endpoint URL
-   * @param {Object} data - Request data
-   * @param {Object} options - Request options
-   * @returns {Promise} - API response
-   */
+  /** POST with a JSON body. */
   static async post(url, data = {}, options = {}) {
     return this.request(url, {
       method: 'POST',
@@ -106,13 +81,7 @@ class APIClient {
     });
   }
 
-  /**
-   * PUT request
-   * @param {string} url - API endpoint URL
-   * @param {Object} data - Request data
-   * @param {Object} options - Request options
-   * @returns {Promise} - API response
-   */
+  /** PUT with a JSON body. */
   static async put(url, data = {}, options = {}) {
     return this.request(url, {
       method: 'PUT',
@@ -121,12 +90,7 @@ class APIClient {
     });
   }
 
-  /**
-   * DELETE request
-   * @param {string} url - API endpoint URL
-   * @param {Object} options - Request options
-   * @returns {Promise} - API response
-   */
+  /** DELETE. */
   static async delete(url, options = {}) {
     return this.request(url, { method: 'DELETE', ...options });
   }
@@ -272,16 +236,6 @@ class CueAPI extends APIClient {
    */
   static async refreshAllCues() {
     return this.post('/api/cues/refresh-all');
-  }
-}
-
-/**
- * Connection/scheduler status API operations
- */
-class StatusAPI extends APIClient {
-  /** @returns {Promise} - QLab connection + scheduler-armed state */
-  static async getStatus() {
-    return this.get('/api/status');
   }
 }
 

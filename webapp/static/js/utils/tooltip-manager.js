@@ -1,6 +1,7 @@
 /**
- * Tooltip Manager Utility
- * Manages Bootstrap tooltips with consistent behavior
+ * Initializes/disposes Bootstrap tooltips in one place, so pages get consistent
+ * tooltip behavior (and clean teardown before re-init) without repeating the
+ * `[data-bs-toggle="tooltip"]` boilerplate.
  */
 /* exported TooltipManager */
 class TooltipManager {
