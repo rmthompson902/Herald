@@ -2,7 +2,7 @@
 
 // VOG (Voice of God / emergency) endpoint handlers, extracted from flows.json. VOG messages
 // are manual-trigger only (no cron-plus sync). Trigger is gated on both `enabled` (enabled
-// IS armed for VOG - see docs/claude-plan.md) and live QLab connectivity.
+// IS armed for VOG - see docs/03-domain-concepts.md) and live QLab connectivity.
 
 const { warnUnmappedLeafCues } = require('./util');
 

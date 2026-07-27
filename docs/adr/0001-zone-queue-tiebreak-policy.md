@@ -6,8 +6,7 @@ Accepted (Phase 8).
 
 ## Context
 
-Collision handling is queue-and-wait, per zone (see `docs/claude-plan.md`'s Confirmed
-Decisions) - never skip, never overlap. `lib/queue/zoneQueueEngine.js` implements this as an
+Collision handling is queue-and-wait, per zone (see `docs/04-queue-engine.md`) - never skip, never overlap. `lib/queue/zoneQueueEngine.js` implements this as an
 in-memory, per-zone FIFO. This ADR records the tie-break/edge-case rules that aren't
 self-evident from "queue and wait," plus the multi-zone admission rule the plan didn't spell
 out.

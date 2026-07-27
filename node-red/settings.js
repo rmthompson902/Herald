@@ -76,7 +76,7 @@ module.exports = {
 
   // No auth anywhere - access is gated entirely by KVM + a locked-down LAN/firewall
   // perimeter on the deployed machine, plus this API being loopback-only (confirmed
-  // decisions, see docs/claude-plan.md).
+  // decisions, see docs/01-overview.md).
   functionGlobalContext: {
     core,
     cronSyncMessages,

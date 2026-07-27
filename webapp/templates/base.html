@@ -1,7 +1,7 @@
 <!--
 Base template - shared shell for every page: nav, toast system, and the SocketIO
 connection that receives live connection-health pushes from the background poller
-in app/main.py (see docs/claude-plan.md's Frontend Architecture section).
+in app/main.py (see docs/02-architecture.md).
 
 Block areas for child templates: title, additional_css, content, scripts
 -->
@@ -76,7 +76,7 @@ Block areas for child templates: title, additional_css, content, scripts
 
     <script>
         // Connects to the FastAPI app's own SocketIO relay - the browser never talks
-        // to Node-RED directly (see Frontend Architecture in docs/claude-plan.md).
+        // to Node-RED directly (see docs/02-architecture.md).
         const socket = io();
 
         socket.on('connect', () => {

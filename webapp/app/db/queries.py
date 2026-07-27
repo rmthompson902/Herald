@@ -6,7 +6,7 @@ JSON API never need a second mental model of "what a schedule looks like".
 
 No writes happen here, ever - every write goes through Node-RED via
 node_red_client.py so validateSchedule/cronSync stay single-sourced (see
-Frontend Architecture in docs/claude-plan.md). Opened as a fresh read-only
+docs/02-architecture.md). Opened as a fresh read-only
 connection per call: cheap with SQLite, and safe to run alongside Node-RED's
 WAL-mode writer process from a second process/language.
 """

@@ -2,7 +2,7 @@
 Pydantic request model mirroring lib/scheduling/scheduleModel.js's field
 rules, for instant client-side feedback only. This is UX duplication, not
 business-logic duplication: Node-RED's validateSchedule still runs on every
-write and remains the actual authority (see docs/claude-plan.md) - a passing
+write and remains the actual authority (see docs/02-architecture.md) - a passing
 check here never skips the proxy call to Node-RED.
 """
 

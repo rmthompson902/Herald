@@ -1,7 +1,7 @@
 """
 Browser-facing schedule API. Reads go straight to SQLite (db/queries.py);
 every write proxies to Node-RED so validateSchedule + cronSync.syncOne stay
-single-sourced there (see Frontend Architecture in docs/claude-plan.md).
+single-sourced there (see docs/02-architecture.md).
 """
 
 from fastapi import APIRouter

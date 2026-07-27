@@ -1,8 +1,7 @@
 """
 FastAPI app entrypoint. Ties together the page routers, the JSON API
 routers, static files, and the SocketIO relay that pushes QLab connection
-health to every connected browser (see docs/claude-plan.md's Frontend
-Architecture - "Real-time push" section).
+health to every connected browser (see docs/02-architecture.md).
 
 Run with: uvicorn app.main:app --app-dir webapp --host 127.0.0.1 --port 8000
 

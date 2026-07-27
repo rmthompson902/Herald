@@ -1,7 +1,7 @@
 /**
  * Connection status page - listens for the health_update push emitted by
  * app/main.py's background poller and swaps the status badges live,
- * without a page reload (see docs/claude-plan.md's real-time push section).
+ * without a page reload (see docs/02-architecture.md).
  */
 document.addEventListener('DOMContentLoaded', () => {
   socket.on('health_update', (health) => {

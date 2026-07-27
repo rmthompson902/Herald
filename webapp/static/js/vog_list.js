@@ -4,7 +4,7 @@
  */
 document.addEventListener('DOMContentLoaded', () => {
   // Enabled *is* armed for VOG - the toggle is the real safety gate (see
-  // docs/claude-plan.md), so an armed Trigger fires immediately with no
+  // docs/03-domain-concepts.md), so an armed Trigger fires immediately with no
   // extra confirmation step. A disarmed message's button is server-rendered
   // disabled and the backend rejects it too either way.
   document.querySelectorAll('.trigger-vog-btn').forEach((button) => {

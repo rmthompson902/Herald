@@ -2,8 +2,8 @@
  * Centralized API layer for the browser. Every method hits this app's own
  * /api/* routes (see webapp/app/routers), never Node-RED directly - writes and
  * anything needing the live OSC socket are proxied to Node-RED server-side,
- * while SQLite-only reads are served directly (see Frontend Architecture in
- * docs/claude-plan.md). Every route returns the same success/error envelope, so
+ * while SQLite-only reads are served directly (see docs/02-architecture.md).
+ * Every route returns the same success/error envelope, so
  * handleResponse() works against all of them; the subclasses below just declare
  * each domain's own endpoints.
  */

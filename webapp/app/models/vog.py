@@ -1,7 +1,7 @@
 """
 Pydantic request model for VOG (Voice of God / emergency) messages -
 deliberately no timing fields, since VOG is manual-trigger only (see
-docs/claude-plan.md's Confirmed Decisions).
+docs/03-domain-concepts.md).
 """
 
 from pydantic import BaseModel, field_validator

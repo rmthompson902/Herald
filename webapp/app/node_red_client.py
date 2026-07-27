@@ -1,6 +1,6 @@
 """
 Thin async wrapper around Node-RED's internal HTTP API (see the endpoint
-table in docs/claude-plan.md's Frontend Architecture section). This is the
+table in docs/08-api-reference.md). This is the
 ONE place that knows Node-RED's endpoint shapes - routers never build
 Node-RED URLs themselves. Every write to schedules/vog_messages and
 everything needing the live OSC connection goes through here; connect-
