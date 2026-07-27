@@ -5,6 +5,16 @@ health to every connected browser (see docs/claude-plan.md's Frontend
 Architecture - "Real-time push" section).
 
 Run with: uvicorn app.main:app --app-dir webapp --host 127.0.0.1 --port 8000
+
+Note: `log`/uvicorn's own output below is not the only place this app's diagnostics can
+land. Under the launchd LaunchAgent (see deploy/launchd/), raw stdout/stderr - including
+anything printed before Python logging is even configured, or a crash severe enough to
+bypass it entirely - goes to logs/launchd-webapp.log / -error.log instead. When run
+manually via a plain `nohup` during dev (rather than through launchd), that same raw
+console output has instead been redirected ad hoc to /private/tmp/uvicorn-*.log on this
+machine - not a fixed convention, just wherever a given manual run happened to point it, so
+check `lsof -p <pid>` for fd 1/2 if that filename doesn't exist on a given box (same
+situation as lib/log/appLogger.js's identical note for the Node-RED side).
 """
 
 import asyncio

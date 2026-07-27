@@ -3,7 +3,7 @@
 const path = require('path');
 const { createCore } = require('../lib/index');
 const { createEventLogger } = require('../lib/log/eventLogger');
-const { createAppLogger } = require('../lib/log/appLogger');
+const { createAppLogger, logFatalAndExit } = require('../lib/log/appLogger');
 const cronSyncMessages = require('./lib/applyCronSyncDirectives');
 const { refreshCueCache, refreshAllReferencedCues } = require('./lib/refreshCueCache');
 const zonesAdmin = require('./lib/zonesAdmin');
@@ -17,6 +17,23 @@ const eventLogger = createEventLogger(path.join(__dirname, '..', 'logs'));
 // file (app-*.log) and a separate purpose - full raw detail (every inbound OSC message,
 // among other things) rather than curated one-line-per-business-event history.
 const appLogger = createAppLogger(path.join(__dirname, '..', 'logs'));
+
+// Last-resort safety net, registered as early as possible (before createCore, before
+// anything else that could throw): every other fix this session (oscClient's/the loggers'
+// EventEmitter 'error' handling, the FastAPI pollers, healthMonitor's silent catch, ...)
+// turned a SPECIFIC known crash into graceful, logged, non-fatal handling. This is the
+// generic backstop for whatever we haven't anticipated - Node's own docs say resuming
+// normal operation after an uncaughtException is unsafe, so it still exits (launchd's
+// KeepAlive - see deploy/launchd/ - is what actually restarts it), but now the reason
+// lands in the same durable, rotated app-*.log as everything else, not only in the raw,
+// unrotated logs/launchd-node-red-error.log that launchd captures independently.
+process.on('uncaughtException', (err) => {
+  logFatalAndExit(appLogger('process'), 'Uncaught exception - process exiting', err.stack || err.message);
+});
+process.on('unhandledRejection', (reason) => {
+  const message = reason instanceof Error ? reason.stack || reason.message : String(reason);
+  logFatalAndExit(appLogger('process'), 'Unhandled promise rejection - process exiting', message);
+});
 
 const core = createCore({
   dbPath: process.env.DB_PATH || path.join(__dirname, '..', 'data', 'schedule.db'),
