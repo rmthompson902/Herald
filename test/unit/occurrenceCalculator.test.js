@@ -145,7 +145,12 @@ describe('nextOccurrences - DST spring-forward (America/New_York, 2026-03-08)', 
 
 describe('occurrencesUntil', () => {
   it('returns every occurrence within the window, none outside it', () => {
-    const s = schedule({ intervalSeconds: 3600, startTime: '09:00', endTime: '11:00', weekdays: [1] }); // Mondays 9-11am hourly
+    const s = schedule({
+      intervalSeconds: 3600,
+      startTime: '09:00',
+      endTime: '11:00',
+      weekdays: [1]
+    }); // Mondays 9-11am hourly
     const from = new Date(2026, 6, 20, 0, 0, 0); // Monday
     const until = new Date(2026, 6, 20, 23, 59, 59); // same Monday, end of day
 

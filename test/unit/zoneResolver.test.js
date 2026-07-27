@@ -98,7 +98,7 @@ describe('resolveZoneInfoForCue', () => {
     expect(zoneToCueNumber.get('Zone 2')).toBe('990102');
   });
 
-  it('maps a leaf cue\'s own single zone to its own cue number', async () => {
+  it("maps a leaf cue's own single zone to its own cue number", async () => {
     const protocol = fakeProtocol();
     const { zoneToCueNumber } = await resolveZoneInfoForCue(protocol, patchMap, '1101');
     expect(zoneToCueNumber.get('Zone 1')).toBe('1101');
@@ -147,13 +147,21 @@ describe('resolveZoneDetailsForCue', () => {
     expect(unmappedLeafCues).toEqual([{ cueNumber: '990102', patchId: 2 }]);
   });
 
-  it('resolves a Group cue with each zone mapped to ITS OWN child cue/duration/uniqueId, never the group\'s own number', async () => {
+  it("resolves a Group cue with each zone mapped to ITS OWN child cue/duration/uniqueId, never the group's own number", async () => {
     const protocol = fakeProtocol();
     const { zones, zoneDetails } = await resolveZoneDetailsForCue(protocol, patchMap, '9901');
 
     expect(zones.sort()).toEqual(['Zone 1', 'Zone 2']);
-    expect(zoneDetails['Zone 1']).toEqual({ cueNumber: '990101', durationSeconds: 5, qlabInternalId: 'uid-990101' });
-    expect(zoneDetails['Zone 2']).toEqual({ cueNumber: '990102', durationSeconds: 10, qlabInternalId: 'uid-990102' });
+    expect(zoneDetails['Zone 1']).toEqual({
+      cueNumber: '990101',
+      durationSeconds: 5,
+      qlabInternalId: 'uid-990101'
+    });
+    expect(zoneDetails['Zone 2']).toEqual({
+      cueNumber: '990102',
+      durationSeconds: 10,
+      qlabInternalId: 'uid-990102'
+    });
     expect(protocol.getDuration).not.toHaveBeenCalledWith('9901');
     expect(protocol.getUniqueId).not.toHaveBeenCalledWith('9901');
   });
@@ -179,22 +187,34 @@ describe('resolveZoneDetailsForCue', () => {
     });
   });
 
-  it('keeps a zone (with its correctly-resolved cue number) even when that zone\'s own duration query fails, omitting only durationSeconds', async () => {
+  it("keeps a zone (with its correctly-resolved cue number) even when that zone's own duration query fails, omitting only durationSeconds", async () => {
     const protocol = fakeProtocol();
     protocol.getDuration.mockImplementation((cueNumber) =>
-      cueNumber === '990101' ? Promise.reject(new Error('timeout')) : Promise.resolve(durationByCue.get(cueNumber))
+      cueNumber === '990101'
+        ? Promise.reject(new Error('timeout'))
+        : Promise.resolve(durationByCue.get(cueNumber))
     );
 
     const { zones, zoneDetails } = await resolveZoneDetailsForCue(protocol, patchMap, '9901');
     expect(zones.sort()).toEqual(['Zone 1', 'Zone 2']);
-    expect(zoneDetails['Zone 1']).toEqual({ cueNumber: '990101', durationSeconds: undefined, qlabInternalId: 'uid-990101' });
-    expect(zoneDetails['Zone 2']).toEqual({ cueNumber: '990102', durationSeconds: 10, qlabInternalId: 'uid-990102' });
+    expect(zoneDetails['Zone 1']).toEqual({
+      cueNumber: '990101',
+      durationSeconds: undefined,
+      qlabInternalId: 'uid-990101'
+    });
+    expect(zoneDetails['Zone 2']).toEqual({
+      cueNumber: '990102',
+      durationSeconds: 10,
+      qlabInternalId: 'uid-990102'
+    });
   });
 
-  it('keeps a zone even when that zone\'s own uniqueId query fails, omitting only qlabInternalId', async () => {
+  it("keeps a zone even when that zone's own uniqueId query fails, omitting only qlabInternalId", async () => {
     const protocol = fakeProtocol();
     protocol.getUniqueId.mockImplementation((cueNumber) =>
-      cueNumber === '990101' ? Promise.reject(new Error('timeout')) : Promise.resolve(uniqueIdByCue.get(cueNumber))
+      cueNumber === '990101'
+        ? Promise.reject(new Error('timeout'))
+        : Promise.resolve(uniqueIdByCue.get(cueNumber))
     );
 
     const { zoneDetails } = await resolveZoneDetailsForCue(protocol, patchMap, '9901');
@@ -204,7 +224,9 @@ describe('resolveZoneDetailsForCue', () => {
 
   it('propagates (never swallows) a failure of the underlying getCueLists/tree resolution itself, since zone membership is safety-critical', async () => {
     const protocol = fakeProtocol();
-    protocol.getCueLists.mockRejectedValue(new Error('OSC request timed out waiting for /reply/cueLists'));
+    protocol.getCueLists.mockRejectedValue(
+      new Error('OSC request timed out waiting for /reply/cueLists')
+    );
 
     await expect(resolveZoneDetailsForCue(protocol, patchMap, '9901')).rejects.toThrow('timed out');
   });

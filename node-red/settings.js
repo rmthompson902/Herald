@@ -28,7 +28,11 @@ const appLogger = createAppLogger(path.join(__dirname, '..', 'logs'));
 // lands in the same durable, rotated app-*.log as everything else, not only in the raw,
 // unrotated logs/launchd-node-red-error.log that launchd captures independently.
 process.on('uncaughtException', (err) => {
-  logFatalAndExit(appLogger('process'), 'Uncaught exception - process exiting', err.stack || err.message);
+  logFatalAndExit(
+    appLogger('process'),
+    'Uncaught exception - process exiting',
+    err.stack || err.message
+  );
 });
 process.on('unhandledRejection', (reason) => {
   const message = reason instanceof Error ? reason.stack || reason.message : String(reason);

@@ -7,7 +7,6 @@ check here never skips the proxy call to Node-RED.
 """
 
 import re
-from typing import Optional
 
 from pydantic import BaseModel, field_validator, model_validator
 
@@ -19,11 +18,11 @@ class ScheduleRequest(BaseModel):
     name: str
     qlab_cue_number: str
     interval_seconds: int
-    start_time: Optional[str] = None
-    end_time: Optional[str] = None
+    start_time: str | None = None
+    end_time: str | None = None
     weekdays: list[int] = [1, 2, 3, 4, 5, 6, 7]
-    date_range_start: Optional[str] = None
-    date_range_end: Optional[str] = None
+    date_range_start: str | None = None
+    date_range_end: str | None = None
     enabled: bool = True
 
     @field_validator("name", "qlab_cue_number")
@@ -42,14 +41,14 @@ class ScheduleRequest(BaseModel):
 
     @field_validator("start_time", "end_time")
     @classmethod
-    def valid_time(cls, value: Optional[str]) -> Optional[str]:
+    def valid_time(cls, value: str | None) -> str | None:
         if value is not None and not TIME_PATTERN.match(value):
-            raise ValueError('must be HH:MM (24-hour)')
+            raise ValueError("must be HH:MM (24-hour)")
         return value
 
     @field_validator("date_range_start", "date_range_end")
     @classmethod
-    def valid_date(cls, value: Optional[str]) -> Optional[str]:
+    def valid_date(cls, value: str | None) -> str | None:
         if value is not None and not DATE_PATTERN.match(value):
             raise ValueError("must be YYYY-MM-DD")
         return value

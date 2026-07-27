@@ -20,9 +20,15 @@ async function main() {
   console.log(`getUniqueId('${CUE}'):`, await protocol.getUniqueId(CUE));
 
   const cues = await protocol.listCues();
-  console.log(`listCues(): ${cues.length} cues found, numbers =`, cues.map((c) => c.number));
+  console.log(
+    `listCues(): ${cues.length} cues found, numbers =`,
+    cues.map((c) => c.number)
+  );
 
-  const monitor = new HealthMonitor(protocol, client, { heartbeatIntervalMs: 2000, missThreshold: 2 });
+  const monitor = new HealthMonitor(protocol, client, {
+    heartbeatIntervalMs: 2000,
+    missThreshold: 2
+  });
   monitor.on('stateChange', ({ from, to }) => console.log(`healthMonitor: ${from} -> ${to}`));
   await monitor.start();
   await new Promise((resolve) => setTimeout(resolve, 500));

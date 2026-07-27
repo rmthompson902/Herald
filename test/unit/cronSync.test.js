@@ -47,7 +47,10 @@ describe('cronSync', () => {
       dateRangeEnd: '2020-01-02'
     });
 
-    const command = cronSync.toAddCommand(schedule, { from: new Date(2026, 0, 1), windowHours: 48 });
+    const command = cronSync.toAddCommand(schedule, {
+      from: new Date(2026, 0, 1),
+      windowHours: 48
+    });
     expect(command).toBeNull();
   });
 
@@ -92,7 +95,12 @@ describe('cronSync', () => {
       startTime: '09:00',
       endTime: '17:00'
     });
-    schedulesRepo.create(db, { name: 'B (disabled)', qlabCueNumber: 'MSG.B', intervalSeconds: 60, enabled: false });
+    schedulesRepo.create(db, {
+      name: 'B (disabled)',
+      qlabCueNumber: 'MSG.B',
+      intervalSeconds: 60,
+      enabled: false
+    });
 
     const directives = cronSync.rebuildAll(db, { from: new Date(2026, 6, 20, 8, 0, 0) });
 

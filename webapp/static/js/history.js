@@ -10,57 +10,63 @@
 const HISTORY_AUTO_REFRESH_MS = 5000;
 
 function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
 }
 
 function renderHistoryEntries(entries) {
-    const container = document.getElementById('historyLogContainer');
-    if (!container) return;
+  const container = document.getElementById('historyLogContainer');
+  if (!container) return;
 
-    if (!entries || entries.length === 0) {
-        container.innerHTML = `
+  if (!entries || entries.length === 0) {
+    container.innerHTML = `
             <div class="empty-state">
                 <div class="empty-state-icon"><i class="fas fa-list"></i></div>
                 <h3>No events logged yet</h3>
                 <p class="mb-4">Fired, queued, and VOG events will show up here once the scheduling engine is logging.</p>
             </div>
         `;
-        return;
-    }
+    return;
+  }
 
-    const rows = entries
-        .map((line) => {
-            const lower = line.toLowerCase();
-            const cls = lower.includes('vog') ? ' text-vog' : lower.includes('error') ? ' text-danger' : '';
-            return `<div class="log-entry${cls}">${escapeHtml(line)}</div>`;
-        })
-        .join('');
+  const rows = entries
+    .map((line) => {
+      const lower = line.toLowerCase();
+      const cls = lower.includes('vog')
+        ? ' text-vog'
+        : lower.includes('error')
+          ? ' text-danger'
+          : '';
+      return `<div class="log-entry${cls}">${escapeHtml(line)}</div>`;
+    })
+    .join('');
 
-    container.innerHTML = `<div class="card"><div class="card-body">${rows}</div></div>`;
+  container.innerHTML = `<div class="card"><div class="card-body">${rows}</div></div>`;
 }
 
 async function refreshHistoryEntries() {
-    const result = await HistoryAPI.getRecentEntries();
-    if (result && result.status === 'success') {
-        renderHistoryEntries(result.entries);
-    }
-    return result;
+  const result = await HistoryAPI.getRecentEntries();
+  if (result && result.status === 'success') {
+    renderHistoryEntries(result.entries);
+  }
+  return result;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    const button = document.getElementById('refreshLogBtn');
-    if (button) {
-        button.addEventListener('click', () => {
-            ButtonStateManager.handleAsync(button, refreshHistoryEntries, {
-                loadingText: 'Refreshing...',
-                successText: 'Refreshed'
-            });
-        });
-    }
+  const button = document.getElementById('refreshLogBtn');
+  if (button) {
+    button.addEventListener('click', () => {
+      ButtonStateManager.handleAsync(button, refreshHistoryEntries, {
+        loadingText: 'Refreshing...',
+        successText: 'Refreshed'
+      });
+    });
+  }
 
-    setInterval(() => {
-        refreshHistoryEntries().catch((error) => console.error('Failed to auto-refresh event history:', error));
-    }, HISTORY_AUTO_REFRESH_MS);
+  setInterval(() => {
+    refreshHistoryEntries().catch((error) =>
+      console.error('Failed to auto-refresh event history:', error)
+    );
+  }, HISTORY_AUTO_REFRESH_MS);
 });

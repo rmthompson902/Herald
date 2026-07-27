@@ -24,7 +24,15 @@ function makeEngine(protocol, overrides = {}) {
 }
 
 function entry(id, zones, { dedupeKey, durationSeconds = 10, dueAt = 0, qlabInternalId } = {}) {
-  return { id, zones, dedupeKey, durationSeconds, dueAt, cueNumber: id, qlabInternalId: qlabInternalId ?? id };
+  return {
+    id,
+    zones,
+    dedupeKey,
+    durationSeconds,
+    dueAt,
+    cueNumber: id,
+    qlabInternalId: qlabInternalId ?? id
+  };
 }
 
 describe('ZoneQueueEngine', () => {
@@ -44,7 +52,9 @@ describe('ZoneQueueEngine', () => {
 
   it('frees the zone immediately on a failed/denied playCue, instead of holding it for the full duration', async () => {
     const protocol = fakeProtocol();
-    protocol.playCue.mockRejectedValueOnce(new Error('QLab denied /cue/a/start: OSC control permissions off'));
+    protocol.playCue.mockRejectedValueOnce(
+      new Error('QLab denied /cue/a/start: OSC control permissions off')
+    );
     const onEvent = jest.fn();
     const engine = makeEngine(protocol, { onEvent });
 
@@ -56,9 +66,13 @@ describe('ZoneQueueEngine', () => {
     expect(onEvent).toHaveBeenCalledWith('error', expect.objectContaining({ id: 'a' }), {
       message: 'QLab denied /cue/a/start: OSC control permissions off'
     });
-    expect(onEvent).toHaveBeenCalledWith('start_failed_zone_freed', expect.objectContaining({ id: 'a' }), {
-      zone: 'Zone 1'
-    });
+    expect(onEvent).toHaveBeenCalledWith(
+      'start_failed_zone_freed',
+      expect.objectContaining({ id: 'a' }),
+      {
+        zone: 'Zone 1'
+      }
+    );
 
     // A later entry doesn't wait out the 1000s duration timer - the zone is free right away.
     const laterResult = await engine.enqueue(entry('b', ['Zone 1'], { dueAt: 1 }));
@@ -101,7 +115,11 @@ describe('ZoneQueueEngine', () => {
 
     // 'a' is no longer the zone's occupant, so the failed-start handler must not touch it -
     // no crash, and it must not emit a bogus free for whatever (if anything) is there now.
-    expect(onEvent).not.toHaveBeenCalledWith('start_failed_zone_freed', expect.anything(), expect.anything());
+    expect(onEvent).not.toHaveBeenCalledWith(
+      'start_failed_zone_freed',
+      expect.anything(),
+      expect.anything()
+    );
   });
 
   it('queues a second entry for an occupied zone and fires it once the first frees', async () => {
@@ -121,11 +139,17 @@ describe('ZoneQueueEngine', () => {
     await jest.advanceTimersByTimeAsync(10000); // fallback duration elapses -> zone frees -> b fires
 
     expect(protocol.playCue).toHaveBeenCalledWith('b');
-    expect(onEvent).toHaveBeenCalledWith('zone_freed', expect.objectContaining({ id: 'a' }), { zone: 'Zone 1' });
+    expect(onEvent).toHaveBeenCalledWith('zone_freed', expect.objectContaining({ id: 'a' }), {
+      zone: 'Zone 1'
+    });
     // b was genuinely queued behind a, so its eventual fire is flagged for a follow-up notification
-    expect(onEvent).toHaveBeenCalledWith('fired', expect.objectContaining({ id: 'b' }), { afterQueue: true });
+    expect(onEvent).toHaveBeenCalledWith('fired', expect.objectContaining({ id: 'b' }), {
+      afterQueue: true
+    });
     // a fired immediately, no follow-up notification needed for it
-    expect(onEvent).toHaveBeenCalledWith('fired', expect.objectContaining({ id: 'a' }), { afterQueue: false });
+    expect(onEvent).toHaveBeenCalledWith('fired', expect.objectContaining({ id: 'a' }), {
+      afterQueue: false
+    });
   });
 
   it('retries the live confirm if the cue looks still-running, then fires once it clears', async () => {
@@ -143,7 +167,9 @@ describe('ZoneQueueEngine', () => {
 
     await jest.advanceTimersByTimeAsync(0);
     expect(protocol.playCue).not.toHaveBeenCalled();
-    expect(onEvent).toHaveBeenCalledWith('confirm_wait', expect.objectContaining({ id: 'a' }), { attempt: 0 });
+    expect(onEvent).toHaveBeenCalledWith('confirm_wait', expect.objectContaining({ id: 'a' }), {
+      attempt: 0
+    });
 
     await jest.advanceTimersByTimeAsync(250);
     const result = await promise;
@@ -157,7 +183,11 @@ describe('ZoneQueueEngine', () => {
     const protocol = fakeProtocol();
     const onEvent = jest.fn();
     protocol.getIsRunningByUniqueId.mockResolvedValue(true); // never clears
-    const engine = makeEngine(protocol, { onEvent, confirmRetryDelayMs: 100, confirmMaxAttempts: 3 });
+    const engine = makeEngine(protocol, {
+      onEvent,
+      confirmRetryDelayMs: 100,
+      confirmMaxAttempts: 3
+    });
 
     const promise = engine.enqueue(entry('a', ['Zone 1']));
     await jest.advanceTimersByTimeAsync(1000);
@@ -179,8 +209,12 @@ describe('ZoneQueueEngine', () => {
     const engine = makeEngine(protocol, { onEvent });
 
     await engine.enqueue(entry('occupant', ['Zone 1'], { durationSeconds: 100 }));
-    const stalePromise = engine.enqueue(entry('sched1-fire1', ['Zone 1'], { dedupeKey: 'schedule-1', dueAt: 1 }));
-    const resultPromise = engine.enqueue(entry('sched1-fire2', ['Zone 1'], { dedupeKey: 'schedule-1', dueAt: 2 }));
+    const stalePromise = engine.enqueue(
+      entry('sched1-fire1', ['Zone 1'], { dedupeKey: 'schedule-1', dueAt: 1 })
+    );
+    const resultPromise = engine.enqueue(
+      entry('sched1-fire2', ['Zone 1'], { dedupeKey: 'schedule-1', dueAt: 2 })
+    );
     const [, result] = await Promise.all([stalePromise, resultPromise]);
 
     expect(result.fired).toBe(false);
@@ -235,8 +269,14 @@ describe('ZoneQueueEngine', () => {
     await engine.enqueue(entry('occupant', ['Zone 1'], { durationSeconds: 50 }));
     // Both due within the same wall-clock second (500ms apart) - cue 103 arrives first but
     // cue 101 should still play first once the zone frees, since it has the lower number.
-    const p103 = engine.enqueue({ ...entry('sched-103', ['Zone 1'], { dueAt: 500 }), cueNumber: '103' });
-    const p101 = engine.enqueue({ ...entry('sched-101', ['Zone 1'], { dueAt: 900 }), cueNumber: '101' });
+    const p103 = engine.enqueue({
+      ...entry('sched-103', ['Zone 1'], { dueAt: 500 }),
+      cueNumber: '103'
+    });
+    const p101 = engine.enqueue({
+      ...entry('sched-101', ['Zone 1'], { dueAt: 900 }),
+      cueNumber: '101'
+    });
     await Promise.all([p103, p101]);
 
     await jest.advanceTimersByTimeAsync(70000);
@@ -252,8 +292,14 @@ describe('ZoneQueueEngine', () => {
     await engine.enqueue(entry('occupant', ['Zone 1'], { durationSeconds: 50 }));
     // cue 103 is genuinely due a full second earlier than cue 101 - it should still go
     // first, since this isn't a same-time collision at all.
-    const p103 = engine.enqueue({ ...entry('sched-103', ['Zone 1'], { dueAt: 1000 }), cueNumber: '103' });
-    const p101 = engine.enqueue({ ...entry('sched-101', ['Zone 1'], { dueAt: 2000 }), cueNumber: '101' });
+    const p103 = engine.enqueue({
+      ...entry('sched-103', ['Zone 1'], { dueAt: 1000 }),
+      cueNumber: '103'
+    });
+    const p101 = engine.enqueue({
+      ...entry('sched-101', ['Zone 1'], { dueAt: 2000 }),
+      cueNumber: '101'
+    });
     await Promise.all([p103, p101]);
 
     await jest.advanceTimersByTimeAsync(70000);
@@ -284,9 +330,15 @@ describe('ZoneQueueEngine', () => {
     // Reproduces the real bug: cue 103's schedule tick reaches enqueue() a few ms before
     // cue 101's (cron-plus dispatch order, not anything meaningful) - without the settle
     // window, 103 would grab the free zone before 101 even arrives.
-    const p103 = engine.enqueue({ ...entry('sched-103', ['Zone 1'], { dueAt: 1000 }), cueNumber: '103' });
+    const p103 = engine.enqueue({
+      ...entry('sched-103', ['Zone 1'], { dueAt: 1000 }),
+      cueNumber: '103'
+    });
     await jest.advanceTimersByTimeAsync(10);
-    const p101 = engine.enqueue({ ...entry('sched-101', ['Zone 1'], { dueAt: 1005 }), cueNumber: '101' });
+    const p101 = engine.enqueue({
+      ...entry('sched-101', ['Zone 1'], { dueAt: 1005 }),
+      cueNumber: '101'
+    });
 
     await jest.advanceTimersByTimeAsync(100);
     await Promise.all([p103, p101]);
@@ -295,7 +347,7 @@ describe('ZoneQueueEngine', () => {
     expect(protocol.playCue).not.toHaveBeenCalledWith('103');
   });
 
-  it('preemptZones unblocks an enqueue() call still waiting on that zone\'s settle window', async () => {
+  it("preemptZones unblocks an enqueue() call still waiting on that zone's settle window", async () => {
     const protocol = fakeProtocol();
     const engine = makeEngine(protocol, { admissionSettleMs: 5000 });
 
@@ -399,8 +451,14 @@ describe('ZoneQueueEngine', () => {
     await bPromise;
 
     expect(protocol.playCue).toHaveBeenCalledWith('b');
-    expect(onEvent).toHaveBeenCalledWith('zone_freed', expect.objectContaining({ id: 'a' }), { zone: 'Zone 1' });
-    expect(onEvent).not.toHaveBeenCalledWith('suspected_playback_failure', expect.anything(), expect.anything());
+    expect(onEvent).toHaveBeenCalledWith('zone_freed', expect.objectContaining({ id: 'a' }), {
+      zone: 'Zone 1'
+    });
+    expect(onEvent).not.toHaveBeenCalledWith(
+      'suspected_playback_failure',
+      expect.anything(),
+      expect.anything()
+    );
   });
 
   it('flags a confirmed stop as suspected_playback_failure when it lands far short of the known duration', async () => {
@@ -412,17 +470,23 @@ describe('ZoneQueueEngine', () => {
     const onEvent = jest.fn();
     const engine = makeEngine(protocol, { onEvent });
 
-    await engine.enqueue(entry('a', ['Zone 1'], { durationSeconds: 9.292, qlabInternalId: 'uid-a' }));
+    await engine.enqueue(
+      entry('a', ['Zone 1'], { durationSeconds: 9.292, qlabInternalId: 'uid-a' })
+    );
 
     await jest.advanceTimersByTimeAsync(50);
     protocol.getIsRunningByUniqueId.mockResolvedValueOnce(false);
     await engine.handleQlabUpdate('uid-a');
 
-    expect(onEvent).toHaveBeenCalledWith('suspected_playback_failure', expect.objectContaining({ id: 'a' }), {
-      zone: 'Zone 1',
-      elapsedMs: 50,
-      expectedMs: 9292
-    });
+    expect(onEvent).toHaveBeenCalledWith(
+      'suspected_playback_failure',
+      expect.objectContaining({ id: 'a' }),
+      {
+        zone: 'Zone 1',
+        elapsedMs: 50,
+        expectedMs: 9292
+      }
+    );
     expect(onEvent).not.toHaveBeenCalledWith('zone_freed', expect.anything(), expect.anything());
   });
 
@@ -435,14 +499,26 @@ describe('ZoneQueueEngine', () => {
     const onEvent = jest.fn();
     const engine = makeEngine(protocol, { onEvent, fallbackDurationSeconds: 30 });
 
-    await engine.enqueue({ id: 'a', zones: ['Zone 1'], dueAt: 0, cueNumber: 'a', qlabInternalId: 'uid-a' });
+    await engine.enqueue({
+      id: 'a',
+      zones: ['Zone 1'],
+      dueAt: 0,
+      cueNumber: 'a',
+      qlabInternalId: 'uid-a'
+    });
 
     await jest.advanceTimersByTimeAsync(50);
     protocol.getIsRunningByUniqueId.mockResolvedValueOnce(false);
     await engine.handleQlabUpdate('uid-a');
 
-    expect(onEvent).toHaveBeenCalledWith('zone_freed', expect.objectContaining({ id: 'a' }), { zone: 'Zone 1' });
-    expect(onEvent).not.toHaveBeenCalledWith('suspected_playback_failure', expect.anything(), expect.anything());
+    expect(onEvent).toHaveBeenCalledWith('zone_freed', expect.objectContaining({ id: 'a' }), {
+      zone: 'Zone 1'
+    });
+    expect(onEvent).not.toHaveBeenCalledWith(
+      'suspected_playback_failure',
+      expect.anything(),
+      expect.anything()
+    );
   });
 
   it('treats the suspected-failure ratio boundary as strictly-less-than, not less-than-or-equal', async () => {
@@ -456,8 +532,14 @@ describe('ZoneQueueEngine', () => {
     protocol.getIsRunningByUniqueId.mockResolvedValueOnce(false);
     await engine.handleQlabUpdate('uid-a');
 
-    expect(onEvent).toHaveBeenCalledWith('zone_freed', expect.objectContaining({ id: 'a' }), { zone: 'Zone 1' });
-    expect(onEvent).not.toHaveBeenCalledWith('suspected_playback_failure', expect.anything(), expect.anything());
+    expect(onEvent).toHaveBeenCalledWith('zone_freed', expect.objectContaining({ id: 'a' }), {
+      zone: 'Zone 1'
+    });
+    expect(onEvent).not.toHaveBeenCalledWith(
+      'suspected_playback_failure',
+      expect.anything(),
+      expect.anything()
+    );
   });
 
   it('ignores /updates pushes for uniqueIds it is not tracking', async () => {
@@ -493,9 +575,13 @@ describe('ZoneQueueEngine', () => {
 
     engine.preemptZones(['Zone 1']);
 
-    expect(onEvent).toHaveBeenCalledWith('vog_preempt_dropped', expect.objectContaining({ id: 'waiting' }), {
-      zone: 'Zone 1'
-    });
+    expect(onEvent).toHaveBeenCalledWith(
+      'vog_preempt_dropped',
+      expect.objectContaining({ id: 'waiting' }),
+      {
+        zone: 'Zone 1'
+      }
+    );
 
     const vogResult = await engine.enqueue(entry('vog', ['Zone 1'], { dueAt: 2 }));
     expect(vogResult.fired).toBe(true); // zone was actually cleared, not left occupied by "occupant"
@@ -531,7 +617,11 @@ describe('ZoneQueueEngine', () => {
 
     expect(result.fired).toBe(false);
     expect(protocol.playCue).not.toHaveBeenCalledWith('a');
-    expect(onEvent).toHaveBeenCalledWith('preempted_before_fire', expect.objectContaining({ id: 'a' }), undefined);
+    expect(onEvent).toHaveBeenCalledWith(
+      'preempted_before_fire',
+      expect.objectContaining({ id: 'a' }),
+      undefined
+    );
 
     // Zone 1 is genuinely free again afterward - not left stuck occupied by the aborted entry.
     const laterResult = await engine.enqueue(entry('b', ['Zone 1'], { dueAt: 1 }));
@@ -569,7 +659,7 @@ describe('ZoneQueueEngine', () => {
     await bPromise;
   });
 
-  it('getState reports knownDurationMs: null (never the fallback duration) when a fired entry\'s duration was never resolved', async () => {
+  it("getState reports knownDurationMs: null (never the fallback duration) when a fired entry's duration was never resolved", async () => {
     const protocol = fakeProtocol();
     const engine = makeEngine(protocol);
 
@@ -641,9 +731,15 @@ describe('ZoneQueueEngine', () => {
     const onZoneTransition = jest.fn();
     const engine = makeEngine(protocol, { admissionSettleMs: 50, onZoneTransition });
 
-    const p103 = engine.enqueue({ ...entry('sched-103', ['Zone 1'], { dueAt: 1000 }), cueNumber: '103' });
+    const p103 = engine.enqueue({
+      ...entry('sched-103', ['Zone 1'], { dueAt: 1000 }),
+      cueNumber: '103'
+    });
     await jest.advanceTimersByTimeAsync(10);
-    const p101 = engine.enqueue({ ...entry('sched-101', ['Zone 1'], { dueAt: 1005 }), cueNumber: '101' });
+    const p101 = engine.enqueue({
+      ...entry('sched-101', ['Zone 1'], { dueAt: 1005 }),
+      cueNumber: '101'
+    });
 
     expect(onZoneTransition).not.toHaveBeenCalled(); // still within the settle window
 
@@ -698,11 +794,14 @@ describe('ZoneQueueEngine', () => {
     expect(onZoneTransition).toHaveBeenCalledWith('unduck', 'Zone 1');
   });
 
-  it('does not fire the message until the zone\'s duck cue is confirmed done', async () => {
+  it("does not fire the message until the zone's duck cue is confirmed done", async () => {
     const protocol = fakeProtocol();
     let resolveDuck;
     const onZoneTransition = jest.fn((kind) => {
-      if (kind === 'duck') return new Promise((resolve) => { resolveDuck = resolve; });
+      if (kind === 'duck')
+        return new Promise((resolve) => {
+          resolveDuck = resolve;
+        });
       return Promise.resolve();
     });
     const engine = makeEngine(protocol, { onZoneTransition });
@@ -736,7 +835,10 @@ describe('ZoneQueueEngine', () => {
     const protocol = fakeProtocol();
     let resolveDuck;
     const onZoneTransition = jest.fn((kind) => {
-      if (kind === 'duck') return new Promise((resolve) => { resolveDuck = resolve; });
+      if (kind === 'duck')
+        return new Promise((resolve) => {
+          resolveDuck = resolve;
+        });
       return Promise.resolve();
     });
     const onEvent = jest.fn();
@@ -752,14 +854,21 @@ describe('ZoneQueueEngine', () => {
 
     expect(result.fired).toBe(false);
     expect(protocol.playCue).not.toHaveBeenCalled();
-    expect(onEvent).toHaveBeenCalledWith('preempted_before_fire', expect.objectContaining({ id: 'a' }), undefined);
+    expect(onEvent).toHaveBeenCalledWith(
+      'preempted_before_fire',
+      expect.objectContaining({ id: 'a' }),
+      undefined
+    );
   });
 
   it('does not free the zone for new admission until the unduck cue is confirmed done', async () => {
     const protocol = fakeProtocol();
     let resolveUnduck;
     const onZoneTransition = jest.fn((kind) => {
-      if (kind === 'unduck') return new Promise((resolve) => { resolveUnduck = resolve; });
+      if (kind === 'unduck')
+        return new Promise((resolve) => {
+          resolveUnduck = resolve;
+        });
       return Promise.resolve();
     });
     const engine = makeEngine(protocol, { onZoneTransition });
@@ -785,7 +894,10 @@ describe('ZoneQueueEngine', () => {
     const protocol = fakeProtocol();
     let resolveUnduck;
     const onZoneTransition = jest.fn((kind) => {
-      if (kind === 'unduck') return new Promise((resolve) => { resolveUnduck = resolve; });
+      if (kind === 'unduck')
+        return new Promise((resolve) => {
+          resolveUnduck = resolve;
+        });
       return Promise.resolve();
     });
     const engine = makeEngine(protocol, { onZoneTransition });
@@ -830,7 +942,7 @@ describe('ZoneQueueEngine', () => {
     expect(onZoneTransition).toHaveBeenCalledWith('unduck', 'Zone 2');
   });
 
-  it('admits a new entry into a Group\'s shorter zone without waiting for the longer zone to clear', async () => {
+  it("admits a new entry into a Group's shorter zone without waiting for the longer zone to clear", async () => {
     const protocol = fakeProtocol();
     const engine = makeEngine(protocol);
 

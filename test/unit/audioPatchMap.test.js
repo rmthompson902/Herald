@@ -4,10 +4,17 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { loadAudioPatchMap, saveAudioPatchMap, validateAndBuildMaps } = require('../../lib/zones/audioPatchMap');
+const {
+  loadAudioPatchMap,
+  saveAudioPatchMap,
+  validateAndBuildMaps
+} = require('../../lib/zones/audioPatchMap');
 
 function writeTempConfig(obj) {
-  const filePath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'audio-patch-map-test-')), 'audio-patch-map.json');
+  const filePath = path.join(
+    fs.mkdtempSync(path.join(os.tmpdir(), 'audio-patch-map-test-')),
+    'audio-patch-map.json'
+  );
   fs.writeFileSync(filePath, JSON.stringify(obj));
   return filePath;
 }
@@ -94,7 +101,10 @@ describe('validateAndBuildMaps', () => {
 
 describe('saveAudioPatchMap', () => {
   function writeTempConfigFile(obj) {
-    const filePath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'audio-patch-map-save-test-')), 'audio-patch-map.json');
+    const filePath = path.join(
+      fs.mkdtempSync(path.join(os.tmpdir(), 'audio-patch-map-save-test-')),
+      'audio-patch-map.json'
+    );
     fs.writeFileSync(filePath, JSON.stringify(obj, null, 2));
     return filePath;
   }
@@ -116,13 +126,15 @@ describe('saveAudioPatchMap', () => {
     expect(patchToZone.get('3')).toBe('Zone 2');
   });
 
-  it('preserves the file\'s existing _comment field', () => {
+  it("preserves the file's existing _comment field", () => {
     const filePath = writeTempConfigFile({
       _comment: 'original comment',
       zones: { 'Zone 1': { messagingPatchId: '1', duckCueNumber: '1198', unduckCueNumber: '1199' } }
     });
 
-    saveAudioPatchMap(filePath, { 'Zone 1': { messagingPatchId: '1', duckCueNumber: '1198', unduckCueNumber: '1199' } });
+    saveAudioPatchMap(filePath, {
+      'Zone 1': { messagingPatchId: '1', duckCueNumber: '1198', unduckCueNumber: '1199' }
+    });
 
     const written = JSON.parse(fs.readFileSync(filePath, 'utf8'));
     expect(written._comment).toBe('original comment');
@@ -134,7 +146,9 @@ describe('saveAudioPatchMap', () => {
       zones: { 'Zone 1': { messagingPatchId: '1', duckCueNumber: '1198', unduckCueNumber: '1199' } }
     });
 
-    saveAudioPatchMap(filePath, { 'Zone 1': { messagingPatchId: '1', duckCueNumber: '1198', unduckCueNumber: '1199' } });
+    saveAudioPatchMap(filePath, {
+      'Zone 1': { messagingPatchId: '1', duckCueNumber: '1198', unduckCueNumber: '1199' }
+    });
 
     const raw = fs.readFileSync(filePath, 'utf8');
     expect(raw).toMatch(/^\{\n {2}"_comment"/);
