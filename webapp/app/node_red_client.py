@@ -8,7 +8,7 @@ refused (Node-RED not running) is handled gracefully and never raised as an
 unhandled exception up into a router.
 """
 
-from typing import Any, Optional
+from typing import Any
 from urllib.parse import quote
 
 import httpx
@@ -21,7 +21,7 @@ class NodeRedUnavailableError(Exception):
 
 
 class NodeRedClient:
-    def __init__(self, base_url: Optional[str] = None, timeout: float = 10.0) -> None:
+    def __init__(self, base_url: str | None = None, timeout: float = 10.0) -> None:
         self._base_url = (base_url or settings.node_red_api_base).rstrip("/")
         self._timeout = timeout
 
@@ -104,7 +104,7 @@ class NodeRedClient:
     async def get_health(self) -> dict:
         return await self._request("GET", "/health")
 
-    async def get_queue_events(self, since: Optional[str] = None) -> dict:
+    async def get_queue_events(self, since: str | None = None) -> dict:
         params = {"since": since} if since else None
         return await self._request("GET", "/queue/events", params=params)
 

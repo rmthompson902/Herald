@@ -40,7 +40,13 @@ if (process.env.QLAB_PATCH_CUES) {
   }
 }
 
-const fixturePath = path.join(__dirname, '..', 'test', 'fixtures', 'qlab-patch-spike-capture.jsonl');
+const fixturePath = path.join(
+  __dirname,
+  '..',
+  'test',
+  'fixtures',
+  'qlab-patch-spike-capture.jsonl'
+);
 fs.mkdirSync(path.dirname(fixturePath), { recursive: true });
 
 function record(direction, address, args) {
@@ -91,7 +97,9 @@ port.on('ready', async () => {
       console.log(`\n--- Step 3: per-cue patch queries for ${zone}'s test cue "${cueNumber}" ---`);
       send(`/cue/${cueNumber}/patch`);
       await sleep(300);
-      send(`/cue/${cueNumber}/valuesForKeys`, [{ type: 's', value: JSON.stringify(['patch', 'duration', 'uniqueID', 'type']) }]);
+      send(`/cue/${cueNumber}/valuesForKeys`, [
+        { type: 's', value: JSON.stringify(['patch', 'duration', 'uniqueID', 'type']) }
+      ]);
       await sleep(300);
       send(`/cue/${cueNumber}/levels`);
       await sleep(300);
@@ -99,7 +107,9 @@ port.on('ready', async () => {
       await sleep(300);
     }
   } else {
-    console.log('\n--- Step 3 skipped: set QLAB_PATCH_CUES=\'{"Zone 1":"<cue>","Zone 2":"<cue>"}\' with real, patch-assigned cue numbers ---');
+    console.log(
+      '\n--- Step 3 skipped: set QLAB_PATCH_CUES=\'{"Zone 1":"<cue>","Zone 2":"<cue>"}\' with real, patch-assigned cue numbers ---'
+    );
   }
 
   console.log('\n--- Step 4: /cueLists (confirm Group/Cart nesting shape is unchanged) ---');
@@ -110,14 +120,20 @@ port.on('ready', async () => {
     console.log(`\n--- Step 5: Group/Cart cue "${GROUP_CUE}" queries ---`);
     send(`/cue/${GROUP_CUE}/type`);
     await sleep(300);
-    send(`/cue/${GROUP_CUE}/valuesForKeys`, [{ type: 's', value: JSON.stringify(['type', 'cues']) }]);
+    send(`/cue/${GROUP_CUE}/valuesForKeys`, [
+      { type: 's', value: JSON.stringify(['type', 'cues']) }
+    ]);
     await sleep(300);
   } else {
-    console.log('\n--- Step 5 skipped: set QLAB_GROUP_CUE=<cue number> if a multi-zone Group/Cart cue exists yet ---');
+    console.log(
+      '\n--- Step 5 skipped: set QLAB_GROUP_CUE=<cue number> if a multi-zone Group/Cart cue exists yet ---'
+    );
   }
 
   console.log(`\nCapture complete. Raw payloads saved to ${fixturePath}`);
-  console.log('Review the RECV lines above, then transcribe confirmed facts into test/fixtures/qlab-osc-findings.md.');
+  console.log(
+    'Review the RECV lines above, then transcribe confirmed facts into test/fixtures/qlab-osc-findings.md.'
+  );
   port.close();
   process.exit(0);
 });

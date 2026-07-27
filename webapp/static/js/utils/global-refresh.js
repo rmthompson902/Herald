@@ -7,18 +7,17 @@
  * I just made in QLab right now" rather than the only way it happens.
  */
 document.addEventListener('DOMContentLoaded', () => {
-    const button = document.getElementById('refreshCuesBtn');
-    if (!button) return;
+  const button = document.getElementById('refreshCuesBtn');
+  if (!button) return;
 
-    button.addEventListener('click', async () => {
-        const result = await ButtonStateManager.handleAsync(
-            button,
-            () => CueAPI.refreshAllCues(),
-            { loadingText: window.AppConstants.MESSAGES.REFRESHING, successText: 'Refreshed' }
-        );
-        if (result) {
-            window.showToast('Cue Data Refreshed', window.AppConstants.MESSAGES.CUE_REFRESHED, 'success');
-            setTimeout(() => window.location.reload(), 500);
-        }
+  button.addEventListener('click', async () => {
+    const result = await ButtonStateManager.handleAsync(button, () => CueAPI.refreshAllCues(), {
+      loadingText: window.AppConstants.MESSAGES.REFRESHING,
+      successText: 'Refreshed'
     });
+    if (result) {
+      window.showToast('Cue Data Refreshed', window.AppConstants.MESSAGES.CUE_REFRESHED, 'success');
+      setTimeout(() => window.location.reload(), 500);
+    }
+  });
 });

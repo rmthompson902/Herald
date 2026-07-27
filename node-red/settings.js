@@ -8,6 +8,7 @@ const cronSyncMessages = require('./lib/applyCronSyncDirectives');
 const { refreshCueCache, refreshAllReferencedCues } = require('./lib/refreshCueCache');
 const zonesAdmin = require('./lib/zonesAdmin');
 const { deriveZoneSuggestion } = require('../lib/zones/zoneNamingConvention');
+const { createHandlers } = require('./lib/handlers');
 
 // Daily-rotating, 30-day-retained plain-text business event log (see plan's Logging
 // section) - this is what the webapp's /history page tails directly.
@@ -28,7 +29,11 @@ const appLogger = createAppLogger(path.join(__dirname, '..', 'logs'));
 // lands in the same durable, rotated app-*.log as everything else, not only in the raw,
 // unrotated logs/launchd-node-red-error.log that launchd captures independently.
 process.on('uncaughtException', (err) => {
-  logFatalAndExit(appLogger('process'), 'Uncaught exception - process exiting', err.stack || err.message);
+  logFatalAndExit(
+    appLogger('process'),
+    'Uncaught exception - process exiting',
+    err.stack || err.message
+  );
 });
 process.on('unhandledRejection', (reason) => {
   const message = reason instanceof Error ? reason.stack || reason.message : String(reason);
@@ -50,6 +55,18 @@ const core = createCore({
 // queue events do, not just in Node-RED's own console.
 core.health.on('stateChange', ({ from, to }) => eventLogger.logHealthTransition(from, to));
 
+// Extracted flow/endpoint logic (see node-red/lib/handlers) - each logic-bearing flows.json
+// function node is a thin wrapper calling into these, so the branching stays plain and
+// unit-testable instead of living in flows.json function-node strings.
+const handlers = createHandlers({
+  core,
+  cronSyncMessages,
+  refreshCueCache,
+  refreshAllReferencedCues,
+  zonesAdmin,
+  deriveZoneSuggestion
+});
+
 module.exports = {
   uiPort: Number(process.env.NODE_RED_API_PORT || process.env.DASHBOARD_PORT || 1880),
   // Headless: no dashboard UI lives here anymore (see Frontend Pivot in the plan). This is
@@ -66,7 +83,8 @@ module.exports = {
     refreshCueCache,
     refreshAllReferencedCues,
     zonesAdmin,
-    deriveZoneSuggestion
+    deriveZoneSuggestion,
+    handlers
   },
 
   logging: {

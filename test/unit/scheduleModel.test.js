@@ -4,7 +4,11 @@ const { validateSchedule } = require('../../lib/scheduling/scheduleModel');
 
 describe('validateSchedule', () => {
   it('normalizes a minimal valid schedule with defaults applied', () => {
-    const result = validateSchedule({ name: ' Lobby ', qlabCueNumber: ' MSG.LOBBY.SAFETY ', intervalSeconds: 600 });
+    const result = validateSchedule({
+      name: ' Lobby ',
+      qlabCueNumber: ' MSG.LOBBY.SAFETY ',
+      intervalSeconds: 600
+    });
     expect(result).toEqual({
       name: 'Lobby',
       qlabCueNumber: 'MSG.LOBBY.SAFETY',
@@ -21,13 +25,15 @@ describe('validateSchedule', () => {
   it('rejects missing name/cue/interval', () => {
     expect(() => validateSchedule({})).toThrow(/name is required/);
     expect(() => validateSchedule({ name: 'x' })).toThrow(/qlabCueNumber is required/);
-    expect(() => validateSchedule({ name: 'x', qlabCueNumber: 'y' })).toThrow(/intervalSeconds is required/);
+    expect(() => validateSchedule({ name: 'x', qlabCueNumber: 'y' })).toThrow(
+      /intervalSeconds is required/
+    );
   });
 
   it('rejects a non-positive or non-integer interval', () => {
-    expect(() =>
-      validateSchedule({ name: 'x', qlabCueNumber: 'y', intervalSeconds: 0 })
-    ).toThrow(/intervalSeconds must be a positive integer/);
+    expect(() => validateSchedule({ name: 'x', qlabCueNumber: 'y', intervalSeconds: 0 })).toThrow(
+      /intervalSeconds must be a positive integer/
+    );
     expect(() =>
       validateSchedule({ name: 'x', qlabCueNumber: 'y', intervalSeconds: 12.5 })
     ).toThrow(/intervalSeconds must be a positive integer/);

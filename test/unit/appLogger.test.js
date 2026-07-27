@@ -66,12 +66,19 @@ describe('appLogger', () => {
     // process forever if that write itself fails.
     it('logs the formatted message and exits only once the write actually completes', () => {
       let onWritten;
-      const logger = { error: jest.fn((_message, cb) => { onWritten = cb; }) };
+      const logger = {
+        error: jest.fn((_message, cb) => {
+          onWritten = cb;
+        })
+      };
       const exit = jest.fn();
 
       logFatalAndExit(logger, 'Uncaught exception - process exiting', 'boom', { exit });
 
-      expect(logger.error).toHaveBeenCalledWith('Uncaught exception - process exiting: boom', expect.any(Function));
+      expect(logger.error).toHaveBeenCalledWith(
+        'Uncaught exception - process exiting: boom',
+        expect.any(Function)
+      );
       expect(exit).not.toHaveBeenCalled(); // must not exit before the write is confirmed done
 
       onWritten();
@@ -95,7 +102,11 @@ describe('appLogger', () => {
     it('never exits twice, whichever of the write-complete callback or the timeout fires first', () => {
       jest.useFakeTimers();
       let onWritten;
-      const logger = { error: jest.fn((_message, cb) => { onWritten = cb; }) };
+      const logger = {
+        error: jest.fn((_message, cb) => {
+          onWritten = cb;
+        })
+      };
       const exit = jest.fn();
 
       logFatalAndExit(logger, 'label', 'message', { exit, timeoutMs: 2000 });
@@ -110,7 +121,11 @@ describe('appLogger', () => {
     it('defaults to process.exit(1) when no exit function is injected', () => {
       const processExit = jest.spyOn(process, 'exit').mockImplementation(() => {});
       let onWritten;
-      const logger = { error: jest.fn((_message, cb) => { onWritten = cb; }) };
+      const logger = {
+        error: jest.fn((_message, cb) => {
+          onWritten = cb;
+        })
+      };
 
       logFatalAndExit(logger, 'label', 'message');
       onWritten();

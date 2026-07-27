@@ -13,7 +13,7 @@ WAL-mode writer process from a second process/language.
 
 import json
 import sqlite3
-from typing import Any, Optional
+from typing import Any
 
 from app.config import settings
 
@@ -69,7 +69,7 @@ def list_schedules() -> list[dict[str, Any]]:
         return [_schedule_from_row(row) for row in rows]
 
 
-def get_schedule(schedule_id: int) -> Optional[dict[str, Any]]:
+def get_schedule(schedule_id: int) -> dict[str, Any] | None:
     with _connect() as conn:
         row = conn.execute("SELECT * FROM schedules WHERE id = ?", (schedule_id,)).fetchone()
         return _schedule_from_row(row) if row else None
@@ -81,17 +81,15 @@ def list_vog_messages() -> list[dict[str, Any]]:
         return [_vog_message_from_row(row) for row in rows]
 
 
-def get_vog_message(vog_id: int) -> Optional[dict[str, Any]]:
+def get_vog_message(vog_id: int) -> dict[str, Any] | None:
     with _connect() as conn:
         row = conn.execute("SELECT * FROM vog_messages WHERE id = ?", (vog_id,)).fetchone()
         return _vog_message_from_row(row) if row else None
 
 
-def get_cue_cache(qlab_cue_number: str) -> Optional[dict[str, Any]]:
+def get_cue_cache(qlab_cue_number: str) -> dict[str, Any] | None:
     with _connect() as conn:
-        row = conn.execute(
-            "SELECT * FROM cue_cache WHERE qlab_cue_number = ?", (qlab_cue_number,)
-        ).fetchone()
+        row = conn.execute("SELECT * FROM cue_cache WHERE qlab_cue_number = ?", (qlab_cue_number,)).fetchone()
         return _cue_cache_from_row(row) if row else None
 
 

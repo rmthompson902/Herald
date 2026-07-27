@@ -22,11 +22,16 @@ describe('createCore', () => {
 
     expect(core.db.schedules.listAll(core.db.connection)).toEqual([]);
     expect(core.zones.patchToZone.get('1')).toBe('Zone 1');
-    expect(core.zones.config.get('Zone 1')).toEqual({ duckCueNumber: '1198', unduckCueNumber: '1199' });
+    expect(core.zones.config.get('Zone 1')).toEqual({
+      duckCueNumber: '1198',
+      unduckCueNumber: '1199'
+    });
     expect(typeof core.osc.protocol.getDuration).toBe('function');
     expect(core.health.getState()).toBe('unknown'); // not started
     expect(typeof core.scheduling.cronSync.rebuildAll).toBe('function');
-    expect(typeof core.scheduling.zoneUpcomingOccurrences.getUpcomingOccurrencesForZone).toBe('function');
+    expect(typeof core.scheduling.zoneUpcomingOccurrences.getUpcomingOccurrencesForZone).toBe(
+      'function'
+    );
     expect(typeof core.queue.getState).toBe('function');
 
     core.db.connection.close();
@@ -34,7 +39,10 @@ describe('createCore', () => {
 });
 
 function writeTempPatchMap(obj) {
-  const filePath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'qlab-sched-test-patchmap-')), 'audio-patch-map.json');
+  const filePath = path.join(
+    fs.mkdtempSync(path.join(os.tmpdir(), 'qlab-sched-test-patchmap-')),
+    'audio-patch-map.json'
+  );
   fs.writeFileSync(filePath, JSON.stringify(obj));
   return filePath;
 }
@@ -60,12 +68,15 @@ describe('core.zones.reload', () => {
     expect(patchToZoneRef.has('3')).toBe(false);
 
     // Simulate a save through the Zones admin UI having rewritten the file directly
-    fs.writeFileSync(patchMapPath, JSON.stringify({
-      zones: {
-        'Zone 1': { messagingPatchId: '1', duckCueNumber: '1198', unduckCueNumber: '1199' },
-        'Zone 2': { messagingPatchId: '3', duckCueNumber: '2198', unduckCueNumber: '2199' }
-      }
-    }));
+    fs.writeFileSync(
+      patchMapPath,
+      JSON.stringify({
+        zones: {
+          'Zone 1': { messagingPatchId: '1', duckCueNumber: '1198', unduckCueNumber: '1199' },
+          'Zone 2': { messagingPatchId: '3', duckCueNumber: '2198', unduckCueNumber: '2199' }
+        }
+      })
+    );
 
     core.zones.reload();
 
@@ -198,7 +209,9 @@ describe('OSC message logging', () => {
       args: [{ type: 's', value: JSON.stringify({ status: 'error', message: 'denied' }) }]
     });
 
-    expect(oscLog.warn).toHaveBeenCalledWith('/reply/cue/1101/start {"status":"error","message":"denied"}');
+    expect(oscLog.warn).toHaveBeenCalledWith(
+      '/reply/cue/1101/start {"status":"error","message":"denied"}'
+    );
     expect(oscLog.debug).not.toHaveBeenCalled();
 
     core.db.connection.close();
@@ -215,7 +228,10 @@ describe('OSC message logging', () => {
 
     // Should not throw with no logger wired in.
     expect(() =>
-      core.osc.client.emit('message', { address: '/thump', args: [{ type: 's', value: '{"status":"ok"}' }] })
+      core.osc.client.emit('message', {
+        address: '/thump',
+        args: [{ type: 's', value: '{"status":"ok"}' }]
+      })
     ).not.toThrow();
 
     core.db.connection.close();

@@ -20,59 +20,60 @@
  * .sortable-column) - clicking a header toggles asc/desc silently.
  */
 function sortTableRows(table, key, type, direction) {
-    const headerIndex = Array.from(table.querySelectorAll('thead th')).findIndex(
-        (th) => th.dataset.sortKey === key
-    );
-    if (headerIndex === -1) return;
+  const headerIndex = Array.from(table.querySelectorAll('thead th')).findIndex(
+    (th) => th.dataset.sortKey === key
+  );
+  if (headerIndex === -1) return;
 
-    const tbody = table.querySelector('tbody');
-    const rows = Array.from(tbody.querySelectorAll('tr.sortable-row'));
-    if (rows.length === 0) return;
+  const tbody = table.querySelector('tbody');
+  const rows = Array.from(tbody.querySelectorAll('tr.sortable-row'));
+  if (rows.length === 0) return;
 
-    const factor = direction === 'desc' ? -1 : 1;
+  const factor = direction === 'desc' ? -1 : 1;
 
-    const valueOf = (row) => {
-        const cell = row.children[headerIndex];
-        const raw = cell.dataset.sortValue ?? cell.textContent.trim();
-        if (type === 'number') {
-            const num = parseFloat(raw);
-            return Number.isNaN(num) ? null : num;
-        }
-        return raw.toLowerCase();
-    };
+  const valueOf = (row) => {
+    const cell = row.children[headerIndex];
+    const raw = cell.dataset.sortValue ?? cell.textContent.trim();
+    if (type === 'number') {
+      const num = parseFloat(raw);
+      return Number.isNaN(num) ? null : num;
+    }
+    return raw.toLowerCase();
+  };
 
-    rows.sort((rowA, rowB) => {
-        const a = valueOf(rowA);
-        const b = valueOf(rowB);
-        // Missing values (e.g. duration not yet cached) always sort last,
-        // regardless of direction - flipping them with the direction would
-        // make "descending" look like it randomly hides/shows blanks.
-        if (a === null && b === null) return 0;
-        if (a === null) return 1;
-        if (b === null) return -1;
-        if (a < b) return -1 * factor;
-        if (a > b) return 1 * factor;
-        return 0;
-    });
+  rows.sort((rowA, rowB) => {
+    const a = valueOf(rowA);
+    const b = valueOf(rowB);
+    // Missing values (e.g. duration not yet cached) always sort last,
+    // regardless of direction - flipping them with the direction would
+    // make "descending" look like it randomly hides/shows blanks.
+    if (a === null && b === null) return 0;
+    if (a === null) return 1;
+    if (b === null) return -1;
+    if (a < b) return -1 * factor;
+    if (a > b) return 1 * factor;
+    return 0;
+  });
 
-    rows.forEach((row) => tbody.appendChild(row));
+  rows.forEach((row) => tbody.appendChild(row));
 }
 
 function initSortableTables() {
-    document.querySelectorAll('table.sortable-table').forEach((table) => {
-        table.querySelectorAll('thead th.sortable-column').forEach((th) => {
-            th.addEventListener('click', () => {
-                const key = th.dataset.sortKey;
-                const type = th.dataset.sortType;
-                const direction = table.dataset.sortKey === key && table.dataset.sortDir === 'asc' ? 'desc' : 'asc';
-                table.dataset.sortKey = key;
-                table.dataset.sortDir = direction;
-                sortTableRows(table, key, type, direction);
-            });
-        });
-
-        sortTableRows(table, table.dataset.defaultSortKey, table.dataset.defaultSortType, 'asc');
+  document.querySelectorAll('table.sortable-table').forEach((table) => {
+    table.querySelectorAll('thead th.sortable-column').forEach((th) => {
+      th.addEventListener('click', () => {
+        const key = th.dataset.sortKey;
+        const type = th.dataset.sortType;
+        const direction =
+          table.dataset.sortKey === key && table.dataset.sortDir === 'asc' ? 'desc' : 'asc';
+        table.dataset.sortKey = key;
+        table.dataset.sortDir = direction;
+        sortTableRows(table, key, type, direction);
+      });
     });
+
+    sortTableRows(table, table.dataset.defaultSortKey, table.dataset.defaultSortType, 'asc');
+  });
 }
 
 document.addEventListener('DOMContentLoaded', initSortableTables);

@@ -61,7 +61,12 @@ describe('eventLogger', () => {
       const logger = fakeLogger();
       const { logQueueEvent } = attachEventLogger(logger);
 
-      logQueueEvent('fired', { id: 'vog-1', cueNumber: '104', zones: ['Zone 1', 'Zone 2'], source: 'vog' });
+      logQueueEvent('fired', {
+        id: 'vog-1',
+        cueNumber: '104',
+        zones: ['Zone 1', 'Zone 2'],
+        source: 'vog'
+      });
 
       expect(logger.info.mock.calls[0][0]).toContain('source=vog');
     });

@@ -8,7 +8,10 @@ function schedule(id, { qlabCueNumber = String(id), name = `Schedule ${id}` } = 
   return { id, name, qlabCueNumber };
 }
 
-function cue(qlabCueNumber, { zones = [], durationSeconds = 5, cueDisplayName = `Cue ${qlabCueNumber}` } = {}) {
+function cue(
+  qlabCueNumber,
+  { zones = [], durationSeconds = 5, cueDisplayName = `Cue ${qlabCueNumber}` } = {}
+) {
   return { qlabCueNumber, zones, durationSeconds, cueDisplayName };
 }
 
@@ -24,7 +27,10 @@ function fakeDeps({ schedules = [], cues = {}, occurrencesBySchedule = {} } = {}
 
 describe('getUpcomingOccurrencesForZone', () => {
   it('returns an empty page for a zone with no matching schedules', () => {
-    const deps = fakeDeps({ schedules: [schedule(1)], cues: { 1: cue('1', { zones: ['Zone 2'] }) } });
+    const deps = fakeDeps({
+      schedules: [schedule(1)],
+      cues: { 1: cue('1', { zones: ['Zone 2'] }) }
+    });
 
     const result = getUpcomingOccurrencesForZone(FAKE_DB, 'Zone 1', deps);
 
@@ -68,8 +74,14 @@ describe('getUpcomingOccurrencesForZone', () => {
       occurrencesBySchedule: { 1: occurrences }
     });
 
-    const firstPage = getUpcomingOccurrencesForZone(FAKE_DB, 'Zone 1', deps, { offset: 0, count: 25 });
-    const secondPage = getUpcomingOccurrencesForZone(FAKE_DB, 'Zone 1', deps, { offset: 25, count: 25 });
+    const firstPage = getUpcomingOccurrencesForZone(FAKE_DB, 'Zone 1', deps, {
+      offset: 0,
+      count: 25
+    });
+    const secondPage = getUpcomingOccurrencesForZone(FAKE_DB, 'Zone 1', deps, {
+      offset: 25,
+      count: 25
+    });
 
     expect(firstPage.occurrences).toHaveLength(25);
     expect(firstPage.hasMore).toBe(true);
@@ -91,7 +103,11 @@ describe('getUpcomingOccurrencesForZone', () => {
     // Confirms the module asks nextOccurrences for a bounded count (offset+count), never an
     // unbounded/open-ended request - nextOccurrences itself (MAX_DAYS_TO_SCAN) is what
     // actually guards against scanning forever for a schedule with no end date.
-    expect(deps.nextOccurrences).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }), expect.any(Date), 26);
+    expect(deps.nextOccurrences).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 1 }),
+      expect.any(Date),
+      26
+    );
   });
 
   it('drops only the earliest occurrence for a schedule already represented by a live occupancy/queued entry', () => {
@@ -99,7 +115,11 @@ describe('getUpcomingOccurrencesForZone', () => {
       schedules: [schedule(1)],
       cues: { 1: cue('1', { zones: ['Zone 1'] }) },
       occurrencesBySchedule: {
-        1: [new Date('2026-01-01T00:00:00Z'), new Date('2026-01-01T00:05:00Z'), new Date('2026-01-01T00:10:00Z')]
+        1: [
+          new Date('2026-01-01T00:00:00Z'),
+          new Date('2026-01-01T00:05:00Z'),
+          new Date('2026-01-01T00:10:00Z')
+        ]
       }
     });
 
@@ -117,7 +137,13 @@ describe('getUpcomingOccurrencesForZone', () => {
   it('carries cue duration and display name through for each occurrence, independent of whether the cue has fired', () => {
     const deps = fakeDeps({
       schedules: [schedule(1, { qlabCueNumber: '5' })],
-      cues: { 5: cue('5', { zones: ['Zone 1'], durationSeconds: 12, cueDisplayName: 'Welcome Announcement' }) },
+      cues: {
+        5: cue('5', {
+          zones: ['Zone 1'],
+          durationSeconds: 12,
+          cueDisplayName: 'Welcome Announcement'
+        })
+      },
       occurrencesBySchedule: { 1: [new Date('2026-01-01T00:00:00Z')] }
     });
 

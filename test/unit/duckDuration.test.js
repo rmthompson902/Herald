@@ -89,7 +89,9 @@ describe('playCueAndWaitForDuration', () => {
 
   it('resolves immediately if the getDuration round trip alone already used up the real duration', async () => {
     const protocol = fakeProtocol();
-    protocol.getDuration.mockImplementation(() => new Promise((resolve) => setTimeout(() => resolve(1), 1500)));
+    protocol.getDuration.mockImplementation(
+      () => new Promise((resolve) => setTimeout(() => resolve(1), 1500))
+    );
     let done = false;
 
     const promise = playCueAndWaitForDuration(protocol, '1198').then(() => {

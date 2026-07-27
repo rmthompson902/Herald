@@ -1,0 +1,14 @@
+node_modules/
+webapp/.venv/
+webapp/static/vendor/
+data/
+logs/
+media/
+_old/
+coverage/
+package-lock.json
+node-red/flows.json
+node-red/.config.*
+# Non-JS handled by other tools (Ruff for Python) or left as-is (Jinja templates):
+**/*.html
+**/*.py

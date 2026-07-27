@@ -40,7 +40,10 @@ describe('OscClient', () => {
 
   it('resolves request() with the reply data on status ok', async () => {
     const pending = client.request('/cue/101/duration');
-    lastFakePort.emit('message', { address: '/reply/cue/101/duration', args: replyEnvelope('ok', 9.62).args });
+    lastFakePort.emit('message', {
+      address: '/reply/cue/101/duration',
+      args: replyEnvelope('ok', 9.62).args
+    });
 
     await expect(pending).resolves.toBe(9.62);
     expect(lastFakePort.send).toHaveBeenCalledWith({ address: '/cue/101/duration', args: [] });
@@ -48,7 +51,10 @@ describe('OscClient', () => {
 
   it('rejects request() when QLab denies the command', async () => {
     const pending = client.request('/cue/101/start');
-    lastFakePort.emit('message', { address: '/reply/cue/101/start', args: replyEnvelope('denied').args });
+    lastFakePort.emit('message', {
+      address: '/reply/cue/101/start',
+      args: replyEnvelope('denied').args
+    });
 
     await expect(pending).rejects.toThrow(/denied/);
   });
@@ -66,8 +72,14 @@ describe('OscClient', () => {
     const first = client.request('/cue/101/duration');
     const second = client.request('/cue/101/duration');
 
-    lastFakePort.emit('message', { address: '/reply/cue/101/duration', args: replyEnvelope('ok', 1).args });
-    lastFakePort.emit('message', { address: '/reply/cue/101/duration', args: replyEnvelope('ok', 2).args });
+    lastFakePort.emit('message', {
+      address: '/reply/cue/101/duration',
+      args: replyEnvelope('ok', 1).args
+    });
+    lastFakePort.emit('message', {
+      address: '/reply/cue/101/duration',
+      args: replyEnvelope('ok', 2).args
+    });
 
     await expect(first).resolves.toBe(1);
     await expect(second).resolves.toBe(2);
@@ -82,7 +94,7 @@ describe('OscClient', () => {
     expect(handler).toHaveBeenCalledWith({ address: '/update/workspace/x/cue_id/y', args: [] });
   });
 
-  it('requestOptionalReply resolves undefined on silence (QLab\'s success-is-silent control commands)', async () => {
+  it("requestOptionalReply resolves undefined on silence (QLab's success-is-silent control commands)", async () => {
     jest.useFakeTimers();
     const pending = client.requestOptionalReply('/cue/101/start', [], { timeoutMs: 100 });
     const assertion = expect(pending).resolves.toBeUndefined();
@@ -93,7 +105,10 @@ describe('OscClient', () => {
 
   it('requestOptionalReply still rejects if an explicit denied reply arrives in time', async () => {
     const pending = client.requestOptionalReply('/cue/101/start');
-    lastFakePort.emit('message', { address: '/reply/cue/101/start', args: replyEnvelope('denied').args });
+    lastFakePort.emit('message', {
+      address: '/reply/cue/101/start',
+      args: replyEnvelope('denied').args
+    });
 
     await expect(pending).rejects.toThrow(/denied/);
   });

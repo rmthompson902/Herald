@@ -4,22 +4,22 @@
  * on this page for those.
  */
 document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('.delete-zone-btn').forEach((button) => {
-        button.addEventListener('click', () => {
-            const zoneName = button.dataset.zoneName;
-            ModalManager.showConfirmation(
-                'Delete Zone',
-                window.AppConstants.MESSAGES.CONFIRM_DELETE_ZONE,
-                async () => {
-                    const result = await APIClient.handleResponse(
-                        ZoneAPI.removeZone(zoneName),
-                        window.AppConstants.MESSAGES.ZONE_REMOVED
-                    );
-                    if (result) {
-                        window.location.reload();
-                    }
-                }
-            );
-        });
+  document.querySelectorAll('.delete-zone-btn').forEach((button) => {
+    button.addEventListener('click', () => {
+      const zoneName = button.dataset.zoneName;
+      ModalManager.showConfirmation(
+        'Delete Zone',
+        window.AppConstants.MESSAGES.CONFIRM_DELETE_ZONE,
+        async () => {
+          const result = await APIClient.handleResponse(
+            ZoneAPI.removeZone(zoneName),
+            window.AppConstants.MESSAGES.ZONE_REMOVED
+          );
+          if (result) {
+            window.location.reload();
+          }
+        }
+      );
     });
+  });
 });

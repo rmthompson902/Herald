@@ -2,11 +2,10 @@
  * Sitewide Audio Messaging - Core Stylesheet
  * ===========================================
  *
- * Dark theme design-token system ported directly from the reference app
- * (UPS-Mgmt) per the Frontend Pivot's "mirror the feel/style" decision -
- * see docs/claude-plan.md. UPS-domain-specific component styles (transport
- * controls, battery clips list, SNMP lookup tables, etc.) were not ported;
- * everything below is the generic shell + component styling this app reuses.
+ * Dark-theme design-token system: CSS custom properties for color, spacing, and
+ * type define the shell, and the component styles below (nav, cards, tables,
+ * toasts, badges, the zone queue visualizer) build on those tokens so the whole
+ * app reads as one consistent system.
  *
  * Organization:
  * 1. CSS Custom Properties (Design Tokens)
@@ -701,9 +700,8 @@ button:hover .fa-sync-alt {
    ZONE QUEUE VISUALIZER (/queue)
    ============================================================================= */
 
-/* One card per zone - same auto-fill grid shape as the UPS-Mgmt device grid this page's
-   card anatomy is patterned on, sized wider (340px) than a device card since each one
-   carries a table, not just a stat block. */
+/* One card per zone - an auto-fill grid, each card sized wider (340px) than a
+   plain stat block since it carries a whole table. */
 .zone-queue-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));

@@ -28,7 +28,9 @@ describe('QlabProtocol', () => {
 
   it('getAudioPatches requests the workspace patch list', async () => {
     const client = fakeClient();
-    const patches = [{ name: 'Zone 1 Messages', uniqueID: 'abc', routing: [1], cueOutputChannels: 2 }];
+    const patches = [
+      { name: 'Zone 1 Messages', uniqueID: 'abc', routing: [1], cueOutputChannels: 2 }
+    ];
     client.request.mockResolvedValue(patches);
     const protocol = new QlabProtocol(client);
 
@@ -44,8 +46,12 @@ describe('QlabProtocol', () => {
     await protocol.playCue('101');
     await protocol.stopCue('101');
 
-    expect(client.requestOptionalReply).toHaveBeenCalledWith('/cue/101/start', [], { timeoutMs: 500 });
-    expect(client.requestOptionalReply).toHaveBeenCalledWith('/cue/101/stop', [], { timeoutMs: 500 });
+    expect(client.requestOptionalReply).toHaveBeenCalledWith('/cue/101/start', [], {
+      timeoutMs: 500
+    });
+    expect(client.requestOptionalReply).toHaveBeenCalledWith('/cue/101/stop', [], {
+      timeoutMs: 500
+    });
     expect(client.request).not.toHaveBeenCalled();
   });
 
@@ -54,8 +60,12 @@ describe('QlabProtocol', () => {
     client.request.mockResolvedValue(true);
     const protocol = new QlabProtocol(client);
 
-    await expect(protocol.getIsRunningByUniqueId('780D5905-28E3-47D3-9718-7D668C957415')).resolves.toBe(true);
-    expect(client.request).toHaveBeenCalledWith('/cue_id/780D5905-28E3-47D3-9718-7D668C957415/isRunning');
+    await expect(
+      protocol.getIsRunningByUniqueId('780D5905-28E3-47D3-9718-7D668C957415')
+    ).resolves.toBe(true);
+    expect(client.request).toHaveBeenCalledWith(
+      '/cue_id/780D5905-28E3-47D3-9718-7D668C957415/isRunning'
+    );
   });
 
   it('keepAlive is fire-and-forget (uses send, not request)', () => {
@@ -71,7 +81,11 @@ describe('QlabProtocol', () => {
   it('getCueLists de-dupes concurrent calls into a single OSC request (QLab only answers one of several simultaneous identical-address queries)', async () => {
     const client = fakeClient();
     let resolveRequest;
-    client.request.mockReturnValue(new Promise((resolve) => { resolveRequest = resolve; }));
+    client.request.mockReturnValue(
+      new Promise((resolve) => {
+        resolveRequest = resolve;
+      })
+    );
     const protocol = new QlabProtocol(client);
 
     const p1 = protocol.getCueLists();
@@ -90,7 +104,9 @@ describe('QlabProtocol', () => {
 
   it('getCueLists issues a fresh request for a call that starts after the previous one already resolved', async () => {
     const client = fakeClient();
-    client.request.mockResolvedValueOnce(cueListsFixture.data).mockResolvedValueOnce(cueListsFixture.data);
+    client.request
+      .mockResolvedValueOnce(cueListsFixture.data)
+      .mockResolvedValueOnce(cueListsFixture.data);
     const protocol = new QlabProtocol(client);
 
     await protocol.getCueLists();
@@ -101,7 +117,9 @@ describe('QlabProtocol', () => {
 
   it('getCueLists issues a fresh request after a prior in-flight one rejects (not permanently stuck sharing a failed call)', async () => {
     const client = fakeClient();
-    client.request.mockRejectedValueOnce(new Error('OSC request timed out waiting for /reply/cueLists'));
+    client.request.mockRejectedValueOnce(
+      new Error('OSC request timed out waiting for /reply/cueLists')
+    );
     client.request.mockResolvedValueOnce(cueListsFixture.data);
     const protocol = new QlabProtocol(client);
 

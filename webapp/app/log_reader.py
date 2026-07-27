@@ -19,7 +19,7 @@ def read_recent_entries(limit: int = MAX_ENTRIES) -> list[str]:
     if not log_files:
         return []
 
-    with open(log_files[0], "r", encoding="utf-8") as handle:
+    with open(log_files[0], encoding="utf-8") as handle:
         lines = handle.readlines()[-limit:]
     lines.reverse()
     return [line.rstrip("\n") for line in lines]

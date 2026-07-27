@@ -92,15 +92,21 @@ port.on('ready', async () => {
     await sleep(300);
     send(`/cue/${CUE}/uniqueID`);
     await sleep(300);
-    send(`/cue/${CUE}/valuesForKeys`, [{ type: 's', value: JSON.stringify(['duration', 'uniqueID']) }]);
+    send(`/cue/${CUE}/valuesForKeys`, [
+      { type: 's', value: JSON.stringify(['duration', 'uniqueID']) }
+    ]);
     await sleep(300);
   } else {
-    console.log('\n--- Step 4 skipped: set QLAB_CUE=<a real cue number> to test duration/levels/uniqueID ---');
+    console.log(
+      '\n--- Step 4 skipped: set QLAB_CUE=<a real cue number> to test duration/levels/uniqueID ---'
+    );
   }
 
   // 5. Subscribe to the push-update feed and just listen.
   console.log(`\n--- Step 5: subscribing to /updates for ${LISTEN_SECONDS}s ---`);
-  console.log('While this runs: manually play/stop a cue in QLab\'s own UI and watch for /update/... messages below.');
+  console.log(
+    "While this runs: manually play/stop a cue in QLab's own UI and watch for /update/... messages below."
+  );
   send('/updates', [{ type: 'i', value: 1 }]);
 
   await sleep(LISTEN_SECONDS * 1000);
@@ -110,7 +116,9 @@ port.on('ready', async () => {
   await sleep(300);
 
   console.log(`\nCapture complete. Raw payloads saved to ${fixturePath}`);
-  console.log('Review the RECV lines above against the plan\'s Open Items before writing lib/osc/qlabProtocol.js.');
+  console.log(
+    "Review the RECV lines above against the plan's Open Items before writing lib/osc/qlabProtocol.js."
+  );
   port.close();
   process.exit(0);
 });

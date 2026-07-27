@@ -1,0 +1,19 @@
+# Ruff config for the FastAPI webapp - lint + format in one tool (replaces black/flake8/isort).
+# line-length is set to 120 rather than the 88 default because several existing, readable
+# lines (f-strings in main.py, long docstrings) sit near 120 and rewrapping them would churn
+# history for no real gain.
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+extend-exclude = [".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "B", "UP"]
+
+[tool.pytest.ini_options]
+# Run from webapp/ (rootdir); make the `app` package importable without an install, and let
+# async test functions run without a per-test decorator.
+pythonpath = ["."]
+testpaths = ["tests"]
+asyncio_mode = "auto"

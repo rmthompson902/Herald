@@ -113,7 +113,7 @@ describe('vogInterruptHandler.triggerVog', () => {
     expect(result).toEqual({ fired: true, zones: ['Zone 1', 'Zone 2'] });
   });
 
-  test('resolves and passes through each zone\'s own discrete play details (e.g. for a multi-zone Group cue)', async () => {
+  test("resolves and passes through each zone's own discrete play details (e.g. for a multi-zone Group cue)", async () => {
     const zoneDetails = {
       'Zone 1': { cueNumber: '901', durationSeconds: 5, qlabInternalId: 'uid-901' },
       'Zone 2': { cueNumber: '902', durationSeconds: 10, qlabInternalId: 'uid-902' }
@@ -138,7 +138,10 @@ describe('vogInterruptHandler.triggerVog', () => {
       cueNumber === '101' ? Promise.reject(new Error('no reply')) : Promise.resolve()
     );
 
-    await expect(triggerVog(deps, vogMessage)).resolves.toEqual({ fired: true, zones: ['Zone 1', 'Zone 2'] });
+    await expect(triggerVog(deps, vogMessage)).resolves.toEqual({
+      fired: true,
+      zones: ['Zone 1', 'Zone 2']
+    });
     expect(deps.queueEngine.preemptZones).toHaveBeenCalledWith(['Zone 1', 'Zone 2']);
   });
 
