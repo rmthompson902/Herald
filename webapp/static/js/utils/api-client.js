@@ -291,6 +291,29 @@ class HistoryAPI extends APIClient {
 }
 
 /**
+ * Zone queue visualizer API operations (/queue) - live occupancy/queued snapshot plus
+ * paginated future occurrences per zone. The page's live updates arrive over SocketIO
+ * (queue_state_update/queue_event, see queue_visualizer.js) - these two calls only serve
+ * the initial page load and each zone's infinite-scroll "load next batch" requests.
+ */
+class QueueAPI extends APIClient {
+    /** @returns {Promise} - { status, occupancy: {[zone]: {...}}, queued: {[zone]: [...]} } */
+    static async getState() {
+        return this.get('/api/queue/state');
+    }
+
+    /**
+     * @param {string} zone
+     * @param {number} [offset]
+     * @param {number} [count]
+     * @returns {Promise} - { status, zone, occurrences: [...], hasMore }
+     */
+    static async getUpcoming(zone, offset = 0, count = 25) {
+        return this.get(`/api/queue/upcoming?zone=${encodeURIComponent(zone)}&offset=${offset}&count=${count}`);
+    }
+}
+
+/**
  * Zones admin API operations - config/audio-patch-map.json, the one manual zone config in
  * the system (see lib/zones/audioPatchMap.js). Every write here takes effect immediately in
  * Node-RED (hot-reload) - no restart needed.

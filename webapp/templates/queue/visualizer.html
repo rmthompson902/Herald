@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% import "partials/components/page_header.html" as ph %}
+{% import "partials/components/empty_state.html" as es %}
+{% import "partials/components/queue_zone_card.html" as qzc %}
+
+{% block title %}Zone Queue - Sitewide Audio Messaging{% endblock %}
+
+{% block content %}
+{{ ph.page_header(
+    'Zone Queue',
+    'Live view of what\'s playing and what\'s next in every zone.'
+) }}
+
+{% if not zone_names %}
+    {{ es.empty_state('map-marker-alt', 'No zones configured yet', 'Add a zone in Settings before there\'s anything to visualize here.', 'Go to Settings', url_for('settings_page')) }}
+{% else %}
+<div class="zone-queue-grid">
+    {% for zone in zone_names %}
+        {{ qzc.queue_zone_card(zone) }}
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', path='js/queue_visualizer.js') }}"></script>
+{% endblock %}

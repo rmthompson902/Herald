@@ -677,3 +677,139 @@ button:hover .fa-sync-alt {
         padding: var(--spacing-md);
     }
 }
+
+/* =============================================================================
+   ZONE QUEUE VISUALIZER (/queue)
+   ============================================================================= */
+
+/* One card per zone - same auto-fill grid shape as the UPS-Mgmt device grid this page's
+   card anatomy is patterned on, sized wider (340px) than a device card since each one
+   carries a table, not just a stat block. */
+.zone-queue-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: var(--spacing-lg);
+}
+
+/* The table's own internal scroll region - this, not the page, is what stays bounded as
+   a no-end-date schedule's projection grows; keeps every card in the grid the same height
+   regardless of how much is queued in that particular zone. */
+.zone-queue-scroll {
+    max-height: 420px;
+    overflow-y: auto;
+}
+
+.zone-queue-table td {
+    vertical-align: middle;
+}
+
+/* Small circular "is this zone live right now" indicator - is-playing reuses the same
+   expanding box-shadow-ring mechanism as .btn-vog's pulse (see vog-pulse below), just
+   keyed to --success instead of --vog, so a card reads as "something is actually making
+   sound in this zone" at a glance without reading any text. */
+.queue-status-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: var(--spacing-xs);
+    background-color: var(--text-muted);
+}
+
+.queue-status-dot.is-playing {
+    background-color: var(--success);
+    animation: queue-playing-pulse 1.8s ease-in-out infinite;
+}
+
+.queue-status-dot.is-warning {
+    background-color: var(--warning);
+}
+
+@keyframes queue-playing-pulse {
+    0% { box-shadow: 0 0 0 0 var(--success-trans-pulse-1); }
+    70% { box-shadow: 0 0 0 8px var(--success-trans-pulse-0); }
+    100% { box-shadow: 0 0 0 0 var(--success-trans-pulse-0); }
+}
+
+.queue-row-now-playing {
+    background-color: var(--success-trans-bg);
+}
+
+/* The page's signature element: a draining timecode rail for the currently-playing cue,
+   styled after a show-control "go clock" rather than a generic Bootstrap progress bar -
+   fitting for a page built entirely out of QLab cue numbers, ducking, and GO/PLAY actions.
+   The fill represents TIME REMAINING (drains right-to-left toward empty), not elapsed, so
+   it reads the same way a fuse or countdown clock would - "how much runway is left before
+   this zone frees up" is the actual operator question this page answers. */
+.queue-clock {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    min-width: 140px;
+}
+
+.queue-clock-time {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: var(--font-sm);
+    color: var(--text-primary);
+    min-width: 2.6em;
+    text-align: right;
+}
+
+.queue-clock-rail {
+    position: relative;
+    flex: 1;
+    height: 6px;
+    border-radius: var(--radius-sm);
+    background-color: var(--bg-dark);
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+}
+
+/* Decorative 10%-interval tick marks - purely visual texture evoking a timecode rail,
+   never load-bearing (the fill width and the mm:ss text carry the real information). */
+.queue-clock-rail::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: repeating-linear-gradient(
+        90deg,
+        transparent 0,
+        transparent calc(10% - 1px),
+        var(--border-color) calc(10% - 1px),
+        var(--border-color) 10%
+    );
+    pointer-events: none;
+}
+
+.queue-clock-fill {
+    height: 100%;
+    background-color: var(--success);
+    transition: width 1s linear;
+}
+
+/* Final ~15% of a cue's run - a quiet "wrapping up" cue, not an alarm */
+.queue-clock-fill.is-ending {
+    background-color: var(--warning);
+}
+
+.queue-duration-unknown {
+    font-size: var(--font-sm);
+}
+
+.queue-warning-badge {
+    background-color: var(--warning-trans-bg);
+    color: var(--warning);
+    border: 1px solid var(--warning);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .queue-status-dot.is-playing {
+        animation: none;
+    }
+
+    .queue-clock-fill {
+        transition: none;
+    }
+}

@@ -3,30 +3,11 @@
  * delete row actions to the ScheduleAPI (see static/js/utils/api-client.js).
  * Column-sort behavior for the per-zone tables lives in the shared
  * static/js/utils/sortable-tables.js, not here - it wires itself up on any
- * page with a `.sortable-table`, VOG's list page included.
+ * page with a `.sortable-table`, VOG's list page included. Countdown
+ * formatting (formatNextFire) lives in the shared static/js/utils/time-format.js,
+ * now that queue_visualizer.js is a second consumer of it.
  */
-
-/**
- * @param {string|null} iso - occurrence timestamp, or null if this schedule has none upcoming
- * @returns {string} - e.g. "in 12s (2:34:07 PM)", or a muted dash if there's nothing next
- */
-function formatNextFire(iso) {
-    if (!iso) {
-        return '<span class="text-muted">no more occurrences</span>';
-    }
-
-    const when = new Date(iso);
-    const secondsAway = Math.round((when.getTime() - Date.now()) / 1000);
-    const clockTime = when.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' });
-
-    if (secondsAway < 60) {
-        return `in ${secondsAway}s <span class="text-muted">(${clockTime})</span>`;
-    }
-    if (secondsAway < 3600) {
-        return `in ${Math.round(secondsAway / 60)}m <span class="text-muted">(${clockTime})</span>`;
-    }
-    return clockTime;
-}
+const { formatNextFire } = window.TimeFormat;
 
 // scheduleId -> iso timestamp|null, refreshed periodically from the server;
 // the on-screen countdown itself re-renders every second purely from this
