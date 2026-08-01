@@ -16,7 +16,53 @@ Both auto-start at login (`RunAtLoad`) and auto-restart on crash (`KeepAlive`), 
 ordering dependency** — the webapp degrades gracefully if it comes up before Node-RED. QLab itself
 is not managed by either plist.
 
-> Paths inside both plists are hardcoded to this machine — edit them first if deploying elsewhere.
+> The committed plists are **templates** (`deploy/launchd/*.plist.template`) — `deploy/launchd/install.sh`
+> renders and loads them for this machine's actual paths, so nothing needs hand-editing regardless of
+> where the repo is checked out.
+
+## Prerequisites
+
+Install once, before anything else on a fresh machine:
+
+```bash
+brew install node          # Node v26 / npm 11 — no other version is tested against
+brew install python@3.12   # any 3.12+ should work
+```
+
+Plus QLab itself, running locally with OSC control enabled (Workspace Settings → Network → OSC
+Controls, read/edit/control, no passcode) — see
+[06 · Development](06-development.md#running-locally).
+
+Homebrew specifically (not the macOS system interpreter, `pyenv`, etc.) is what's actually verified
+here — its "framework" Python build is what the [TCC/Full Disk Access
+gotcha](#macos-tcc--full-disk-access-gotcha) below is written against. A different Python may work,
+but its failure modes (if any) aren't documented.
+
+## First-time setup
+
+Do this once, before the steps below. Skip anything already done.
+
+1. **Clone the repo** to wherever it will live permanently — any path works, nothing to configure
+   afterward (see **Install** below).
+2. **Install dependencies:**
+   ```bash
+   npm install
+   python3 -m venv webapp/.venv && webapp/.venv/bin/pip install -r webapp/requirements-dev.txt
+   ```
+   (`npm install` also registers the Husky pre-commit hooks via its `prepare` script — harmless on a
+   deploy-only machine, matters if you'll also develop here.)
+3. **Set the venue's zone map.** [`config/audio-patch-map.json`](../config/audio-patch-map.json) is
+   prefilled with 4 zones, patch IDs, duck/unduck
+   cue numbers that matches the example workspace. Deploying to a different venue or QLab show file? Edit it to match first. See
+   [05 · Configuration](05-configuration.md#zone-map-configaudio-patch-mapjson). No `.env` file is
+   required for a same-venue deploy: every setting already has a hardcoded default matching this
+   venue (see [05 · Configuration](05-configuration.md)) — only add `config/.env` / `webapp/.env` if
+   you need to override one of them.
+
+There is **no separate database-migration step** — `data/schedule.db` and its schema are created
+automatically the first time Node-RED starts (see [`lib/db/database.js`](../lib/db/database.js) and
+[05 · Configuration](05-configuration.md#sqlite-schema)); the `data/` and `logs/` directories are
+likewise created on demand.
 
 ## Install
 
@@ -25,17 +71,18 @@ is not managed by either plist.
    lsof -i :1880 -i :8000
    kill -TERM <pid> <pid>
    ```
-2. **Copy and load:**
+2. **Render and load:**
    ```bash
-   cp deploy/launchd/com.herald.node-red.plist ~/Library/LaunchAgents/
-   cp deploy/launchd/com.herald.webapp.plist ~/Library/LaunchAgents/
-   launchctl load ~/Library/LaunchAgents/com.herald.node-red.plist
-   launchctl load ~/Library/LaunchAgents/com.herald.webapp.plist
-   launchctl list | grep herald
+   npm run deploy:install
    ```
-   A real PID + exit status `0` means running. A `-` PID + nonzero exit means it's crashing on
-   startup — check `logs/launchd-*-error.log` (the TCC gotcha below is the most likely cause).
-3. **Verify for real, not just PID presence:**
+   This resolves this checkout's real path and `node` binary, renders both
+   `deploy/launchd/*.plist.template` into `~/Library/LaunchAgents/`, loads them, and runs the health
+   checks from step 3 automatically — it's safe to re-run any time (after `git pull`, after moving
+   the repo, whatever). A real PID + exit status `0` in its `launchctl list | grep herald` output
+   means running; a `-` PID + nonzero exit means it's crashing on startup — check
+   `logs/launchd-*-error.log` (the TCC gotcha below is the most likely cause).
+3. **Verify for real, not just PID presence** (also run automatically by the script above — useful to
+   re-run standalone later):
    ```bash
    curl -s http://127.0.0.1:1880/api/health          # expect {"state":"connected","armed":true}
    curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8000/schedules   # expect 200
@@ -75,30 +122,39 @@ the folder access your Terminal session has — **both** binaries in that re-exe
 explicit grant.
 
 **Fix:** System Settings → Privacy & Security → Full Disk Access → "+" → `Cmd+Shift+G` (paste the
-path, don't navigate Finder — easy to land on the wrong nested binary) → add both:
+path, don't navigate Finder — easy to land on the wrong nested binary) → add both binaries in the
+re-exec chain. Resolve their exact paths on your machine (version-specific, don't hardcode them):
 
-```
-/opt/homebrew/Cellar/python@3.12/3.12.3/Frameworks/Python.framework/Versions/3.12/bin/python3.12
-/opt/homebrew/Cellar/python@3.12/3.12.3/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python
+```bash
+P1=$(readlink -f webapp/.venv/bin/python3)
+P2="$(dirname "$(dirname "$P1")")/Resources/Python.app/Contents/MacOS/Python"
+echo "$P1"; echo "$P2"
 ```
 
-Then `launchctl unload`/`load` the webapp plist again. Node-RED's `node` binary didn't need this on
-this machine; if it ever does elsewhere, same fix with the path from `which node`.
+Then `launchctl unload`/`load` the webapp plist again (or just re-run `npm run deploy:install`).
+Node-RED's `node` binary didn't need this on this machine; if it ever does elsewhere, same fix with
+the path from `which node`.
 
 ## Stop / uninstall
 
-**Stop for now** (stays installed — resumes next login unless you also remove the plists):
 ```bash
-launchctl unload ~/Library/LaunchAgents/com.herald.node-red.plist
-launchctl unload ~/Library/LaunchAgents/com.herald.webapp.plist
+npm run deploy:uninstall
 ```
 
-**Fully remove** (as above, then delete the copies):
-```bash
-rm ~/Library/LaunchAgents/com.herald.*.plist
-```
+Unloads both agents and removes their rendered plists from `~/Library/LaunchAgents/` — nothing
+resumes at next login until you `npm run deploy:install` again. **The database is left alone by
+default** — uninstalling the launchd registration isn't the same as wiping the app's data, so a
+reinstall picks up right where the schedules/VOG messages left off.
 
-**Verify nothing's left** — don't just trust the commands succeeded:
+Want a genuinely clean slate (e.g. tearing down a test setup)?
+```bash
+deploy/launchd/uninstall.sh --purge-data
+```
+This moves `data/` aside to a timestamped `data.bak.<timestamp>/` rather than deleting it outright —
+delete that yourself once you're sure you don't need it. The next `install.sh` + Node-RED start then
+creates a fresh, empty database (same auto-create behavior as **First-time setup** above).
+
+**Verify nothing's left** — don't just trust the command succeeded:
 ```bash
 launchctl list | grep herald   # expect no output
 lsof -i :1880 -i :8000                            # expect no output

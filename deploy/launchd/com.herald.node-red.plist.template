@@ -7,14 +7,14 @@
 
     <key>ProgramArguments</key>
     <array>
-        <string>/opt/homebrew/bin/node</string>
-        <string>/Users/ryanthompson/Documents/_dev/Sitewide-Audio-Messaging/node_modules/node-red/red.js</string>
+        <string>__NODE_BIN__</string>
+        <string>__REPO_ROOT__/node_modules/node-red/red.js</string>
         <string>--userDir</string>
-        <string>/Users/ryanthompson/Documents/_dev/Sitewide-Audio-Messaging/node-red</string>
+        <string>__REPO_ROOT__/node-red</string>
     </array>
 
     <key>WorkingDirectory</key>
-    <string>/Users/ryanthompson/Documents/_dev/Sitewide-Audio-Messaging</string>
+    <string>__REPO_ROOT__</string>
 
     <!-- Runs as a per-user LaunchAgent (not a system LaunchDaemon) because QLab itself
          only runs in a logged-in GUI session - a LaunchDaemon would start before anyone
@@ -37,16 +37,18 @@
     <integer>10</integer>
 
     <key>StandardOutPath</key>
-    <string>/Users/ryanthompson/Documents/_dev/Sitewide-Audio-Messaging/logs/launchd-node-red.log</string>
+    <string>__REPO_ROOT__/logs/launchd-node-red.log</string>
     <key>StandardErrorPath</key>
-    <string>/Users/ryanthompson/Documents/_dev/Sitewide-Audio-Messaging/logs/launchd-node-red-error.log</string>
+    <string>__REPO_ROOT__/logs/launchd-node-red-error.log</string>
 
     <key>EnvironmentVariables</key>
     <dict>
         <!-- launchd's default PATH is minimal (/usr/bin:/bin:/usr/sbin:/sbin) - node lives
-             under Homebrew's prefix, not there. -->
+             under Homebrew's prefix, not there. install.sh resolves __NODE_BIN_DIR__ from
+             wherever `node` actually is on this machine (`command -v node`), so this doesn't
+             hardcode a Homebrew prefix that differs between Apple Silicon and Intel. -->
         <key>PATH</key>
-        <string>/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <string>__NODE_BIN_DIR__:/usr/bin:/bin:/usr/sbin:/sbin</string>
     </dict>
 </dict>
 </plist>

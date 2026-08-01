@@ -6,6 +6,7 @@ webapp/**/__pycache__/
 webapp/.env
 
 data/
+data.bak.*/
 
 logs/
 *.log

@@ -12,6 +12,8 @@
     "format:check": "prettier --check \"lib/**/*.js\" \"node-red/**/*.js\" \"scripts/**/*.js\" \"test/**/*.js\" \"webapp/static/js/**/*.js\" \"*.js\"",
     "spike:qlab": "node scripts/phase0-qlab-spike.js",
     "node-red": "node-red --userDir ./node-red",
+    "deploy:install": "deploy/launchd/install.sh",
+    "deploy:uninstall": "deploy/launchd/uninstall.sh",
     "prepare": "husky"
   },
   "lint-staged": {
