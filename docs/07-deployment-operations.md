@@ -47,7 +47,16 @@ Do this once, before the steps below. Skip anything already done.
 2. **Install dependencies:**
    ```bash
    npm install
-   python3 -m venv webapp/.venv && webapp/.venv/bin/pip install -r webapp/requirements-dev.txt
+   python3.12 -m venv webapp/.venv && webapp/.venv/bin/pip install -r webapp/requirements-dev.txt
+   ```
+   Use `python3.12` explicitly, not bare `python3` — on a Mac with Xcode Command Line Tools
+   installed, plain `python3` on `PATH` can resolve to Apple's CLT shim (`/usr/bin/python3` → CLT's
+   bundled 3.9) instead of the Homebrew build from **Prerequisites** above, even after
+   `brew install python@3.12`. A venv built against the wrong interpreter installs and runs fine in
+   a Terminal session but fails under launchd — see the [TCC gotcha
+   below](#macos-tcc--full-disk-access-gotcha). Sanity-check before moving on:
+   ```bash
+   cat webapp/.venv/pyvenv.cfg   # expect version = 3.12.x and a /opt/homebrew/... home path
    ```
    (`npm install` also registers the Husky pre-commit hooks via its `prepare` script — harmless on a
    deploy-only machine, matters if you'll also develop here.)
@@ -120,6 +129,20 @@ launchctl kickstart -k gui/$(id -u)/com.herald.webapp
 a Homebrew "framework" Python that re-execs itself, and a launchd-spawned process doesn't inherit
 the folder access your Terminal session has — **both** binaries in that re-exec chain need an
 explicit grant.
+
+**Check the interpreter first.** This exact symptom also shows up if the venv wasn't built against
+Homebrew's `python@3.12` in the first place (see the `python3.12` note in **First-time setup**
+above) — most often because bare `python3` resolved to Apple's Command Line Tools shim instead:
+```bash
+cat webapp/.venv/pyvenv.cfg
+```
+If `home` points under `/Library/Developer/CommandLineTools/...` instead of `/opt/homebrew/...`,
+stop here and rebuild the venv first — the Full Disk Access grant below targets the *Homebrew*
+re-exec chain and won't fix a CLT-built venv:
+```bash
+rm -rf webapp/.venv
+python3.12 -m venv webapp/.venv && webapp/.venv/bin/pip install -r webapp/requirements-dev.txt
+```
 
 **Fix:** System Settings → Privacy & Security → Full Disk Access → "+" → `Cmd+Shift+G` (paste the
 path, don't navigate Finder — easy to land on the wrong nested binary) → add both binaries in the
