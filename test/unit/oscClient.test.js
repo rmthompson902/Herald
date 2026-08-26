@@ -13,7 +13,22 @@ jest.mock('osc', () => {
     }
   }
 
-  return { UDPPort: jest.fn().mockImplementation((options) => new FakeUDPPort(options)) };
+  class FakeTCPSocketPort extends EventEmitter {
+    constructor(options) {
+      super();
+      this.options = options;
+      this.send = jest.fn();
+      // Unlike FakeUDPPort, does NOT auto-emit 'ready' - tests drive 'ready'/'message'/
+      // 'error' explicitly so each case can control ordering (e.g. an error before ready).
+      this.open = jest.fn();
+      this.close = jest.fn();
+    }
+  }
+
+  return {
+    UDPPort: jest.fn().mockImplementation((options) => new FakeUDPPort(options)),
+    TCPSocketPort: jest.fn().mockImplementation((options) => new FakeTCPSocketPort(options))
+  };
 });
 
 const osc = require('osc');
@@ -21,6 +36,11 @@ const { OscClient } = require('../../lib/osc/oscClient');
 
 function getLastFakePort() {
   const results = osc.UDPPort.mock.results;
+  return results[results.length - 1].value;
+}
+
+function getLastFakeTcpPort() {
+  const results = osc.TCPSocketPort.mock.results;
   return results[results.length - 1].value;
 }
 
@@ -146,6 +166,87 @@ describe('OscClient', () => {
       expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: 'ENETUNREACH' }));
 
       consoleError.mockRestore();
+    });
+  });
+
+  describe('requestOverTcp', () => {
+    it('opens a fresh TCP connection to the same remote host/port as the UDP transport, sends once ready, resolves with reply data, and closes the connection', async () => {
+      const pending = client.requestOverTcp('/cueLists');
+      const tcpPort = getLastFakeTcpPort();
+
+      expect(osc.TCPSocketPort).toHaveBeenCalledWith({
+        address: '127.0.0.1',
+        port: 53000,
+        metadata: true
+      });
+      expect(tcpPort.open).toHaveBeenCalled();
+      expect(tcpPort.send).not.toHaveBeenCalled();
+
+      tcpPort.emit('ready');
+      expect(tcpPort.send).toHaveBeenCalledWith({ address: '/cueLists', args: [] });
+
+      tcpPort.emit('message', replyEnvelope('ok', { cues: [] }));
+
+      await expect(pending).resolves.toEqual({ cues: [] });
+      expect(tcpPort.close).toHaveBeenCalledTimes(1);
+    });
+
+    it('times out and closes the connection if no reply arrives within timeoutMs', async () => {
+      jest.useFakeTimers();
+      const pending = client.requestOverTcp('/cueLists', [], { timeoutMs: 100 });
+      const tcpPort = getLastFakeTcpPort();
+
+      const assertion = expect(pending).rejects.toThrow(/timed out/);
+      jest.advanceTimersByTime(150);
+      await assertion;
+
+      expect(tcpPort.close).toHaveBeenCalledTimes(1);
+      jest.useRealTimers();
+    });
+
+    it('rejects and closes the connection on a TCP connection error (e.g. ECONNREFUSED)', async () => {
+      const pending = client.requestOverTcp('/cueLists');
+      const tcpPort = getLastFakeTcpPort();
+
+      tcpPort.emit('error', new Error('ECONNREFUSED'));
+
+      await expect(pending).rejects.toThrow(/ECONNREFUSED/);
+      expect(tcpPort.close).toHaveBeenCalledTimes(1);
+    });
+
+    it('rejects like request() when QLab denies the request over TCP', async () => {
+      const pending = client.requestOverTcp('/cueLists');
+      const tcpPort = getLastFakeTcpPort();
+
+      tcpPort.emit('ready');
+      tcpPort.emit('message', replyEnvelope('denied'));
+
+      await expect(pending).rejects.toThrow(/denied/);
+    });
+
+    it("does not emit 'message' on the OscClient itself for a TCP reply (avoids logging large /cueLists payloads on every call)", async () => {
+      const handler = jest.fn();
+      client.on('message', handler);
+
+      const pending = client.requestOverTcp('/cueLists');
+      const tcpPort = getLastFakeTcpPort();
+      tcpPort.emit('ready');
+      tcpPort.emit('message', replyEnvelope('ok', { cues: [] }));
+
+      await pending;
+      expect(handler).not.toHaveBeenCalled();
+    });
+
+    it('does not double-settle or double-close if further events arrive after the first one settles', async () => {
+      const pending = client.requestOverTcp('/cueLists');
+      const tcpPort = getLastFakeTcpPort();
+
+      tcpPort.emit('ready');
+      tcpPort.emit('message', replyEnvelope('ok', 'first'));
+      tcpPort.emit('error', new Error('late error, should be ignored'));
+
+      await expect(pending).resolves.toBe('first');
+      expect(tcpPort.close).toHaveBeenCalledTimes(1);
     });
   });
 });

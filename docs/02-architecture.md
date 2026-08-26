@@ -18,7 +18,7 @@ flowchart TB
     end
 
     DB[("SQLite — data/schedule.db (WAL)")]
-    QLab["QLab — 127.0.0.1:53000 (OSC/UDP)"]
+    QLab["QLab — 127.0.0.1:53000 (OSC/UDP, +TCP for /cueLists)"]
 
     Browser <-->|HTTP| Pages
     Browser <-->|SocketIO| Poll

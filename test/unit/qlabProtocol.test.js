@@ -4,7 +4,12 @@ const { QlabProtocol, flattenCueTree } = require('../../lib/osc/qlabProtocol');
 const cueListsFixture = require('../fixtures/qlab-cuelists.json');
 
 function fakeClient() {
-  return { request: jest.fn(), send: jest.fn(), requestOptionalReply: jest.fn() };
+  return {
+    request: jest.fn(),
+    send: jest.fn(),
+    requestOptionalReply: jest.fn(),
+    requestOverTcp: jest.fn()
+  };
 }
 
 describe('QlabProtocol', () => {
@@ -78,10 +83,20 @@ describe('QlabProtocol', () => {
     expect(client.request).not.toHaveBeenCalled();
   });
 
+  it("getCueLists uses requestOverTcp (TCP+SLIP), not request (UDP) - /cueLists replies can exceed UDP's practical datagram size (see docs/adr/0012-cuelists-tcp-transport.md)", async () => {
+    const client = fakeClient();
+    client.requestOverTcp.mockResolvedValue(cueListsFixture.data);
+    const protocol = new QlabProtocol(client);
+
+    await expect(protocol.getCueLists()).resolves.toBe(cueListsFixture.data);
+    expect(client.requestOverTcp).toHaveBeenCalledWith('/cueLists');
+    expect(client.request).not.toHaveBeenCalled();
+  });
+
   it('getCueLists de-dupes concurrent calls into a single OSC request (QLab only answers one of several simultaneous identical-address queries)', async () => {
     const client = fakeClient();
     let resolveRequest;
-    client.request.mockReturnValue(
+    client.requestOverTcp.mockReturnValue(
       new Promise((resolve) => {
         resolveRequest = resolve;
       })
@@ -92,8 +107,8 @@ describe('QlabProtocol', () => {
     const p2 = protocol.getCueLists();
     const p3 = protocol.getCueLists();
 
-    expect(client.request).toHaveBeenCalledTimes(1);
-    expect(client.request).toHaveBeenCalledWith('/cueLists');
+    expect(client.requestOverTcp).toHaveBeenCalledTimes(1);
+    expect(client.requestOverTcp).toHaveBeenCalledWith('/cueLists');
 
     resolveRequest(cueListsFixture.data);
     const [r1, r2, r3] = await Promise.all([p1, p2, p3]);
@@ -104,7 +119,7 @@ describe('QlabProtocol', () => {
 
   it('getCueLists issues a fresh request for a call that starts after the previous one already resolved', async () => {
     const client = fakeClient();
-    client.request
+    client.requestOverTcp
       .mockResolvedValueOnce(cueListsFixture.data)
       .mockResolvedValueOnce(cueListsFixture.data);
     const protocol = new QlabProtocol(client);
@@ -112,25 +127,25 @@ describe('QlabProtocol', () => {
     await protocol.getCueLists();
     await protocol.getCueLists();
 
-    expect(client.request).toHaveBeenCalledTimes(2);
+    expect(client.requestOverTcp).toHaveBeenCalledTimes(2);
   });
 
   it('getCueLists issues a fresh request after a prior in-flight one rejects (not permanently stuck sharing a failed call)', async () => {
     const client = fakeClient();
-    client.request.mockRejectedValueOnce(
-      new Error('OSC request timed out waiting for /reply/cueLists')
+    client.requestOverTcp.mockRejectedValueOnce(
+      new Error('OSC TCP request timed out waiting for /reply/cueLists')
     );
-    client.request.mockResolvedValueOnce(cueListsFixture.data);
+    client.requestOverTcp.mockResolvedValueOnce(cueListsFixture.data);
     const protocol = new QlabProtocol(client);
 
     await expect(protocol.getCueLists()).rejects.toThrow('timed out');
     await expect(protocol.getCueLists()).resolves.toBe(cueListsFixture.data);
-    expect(client.request).toHaveBeenCalledTimes(2);
+    expect(client.requestOverTcp).toHaveBeenCalledTimes(2);
   });
 
   it('listCues flattens the real cueLists fixture into a flat cue array', async () => {
     const client = fakeClient();
-    client.request.mockResolvedValue(cueListsFixture.data);
+    client.requestOverTcp.mockResolvedValue(cueListsFixture.data);
     const protocol = new QlabProtocol(client);
 
     const cues = await protocol.listCues();

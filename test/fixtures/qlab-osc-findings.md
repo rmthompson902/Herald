@@ -256,3 +256,47 @@ queries through the already-connected production process (a temporary, narrowly-
 endpoint with fixed hardcoded addresses - never a caller-supplied arbitrary address, since that
 would be an unauthenticated pass-through to a live venue control system) rather than opening a
 second standalone UDP client.
+
+**Root cause since isolated (2026-08-25):** not a per-IP registration or firewall quirk after
+all. QLab's own OSC settings UI states it plainly: "By default, replies to OSC messages
+received via UDP are sent on port 53001" - a **fixed** default reply-target port, not "whatever
+port the query was sent from" (ordinary UDP request/reply semantics would imply the latter; QLab
+does not do that unless the client explicitly sends `/udpReplyPort <port>` first, which nothing
+in this codebase does). Any standalone script bound to a different local port will always see
+zero replies to anything - including `/thump` - for exactly this reason, regardless of whether
+Node-RED (which happens to already be bound to port 53001, matching QLab's default) is running.
+Confirmed live: a standalone probe bound directly to port 53001 (with Node-RED stopped so
+nothing else was competing for it) received real replies immediately. See the `/cueLists`
+finding below, which was diagnosed this way.
+
+## `/cueLists` reply exceeds UDP's datagram ceiling on large workspaces (2026-08-25)
+
+Reported by the operator: a schedule against a large real show file ("20260824 US Open
+2026.qlab5") showed no zone assigned, despite correct zone/patch configuration.
+`qlabProtocol.getCueLists()` failed reliably against this workspace with "OSC request timed out
+waiting for /reply/cueLists" - at exactly the client's 3000ms timeout, every time (a flat,
+unvarying failure time, not organic latency, which would vary run to run).
+
+Diagnosed with standalone tooling entirely outside this codebase (per the methodology note
+above - probes bound directly to QLab's actual default reply port, 53001, with Node-RED
+stopped):
+
+- Waiting up to 45 real seconds for a `/cueLists` reply over plain UDP got **zero bytes**
+  back, every time. Not slow - it never arrives, at any timeout.
+- With QLab's own Console logging enabled, sending `/cueLists` confirmed QLab genuinely
+  builds and attempts to send a reply, describing it in the console log as "a very very very
+  long reply."
+- Measuring the actual reply size directly (via a hand-rolled TCP+SLIP client, `net` +
+  RFC-1055 framing, since QLab also accepts TCP on the same port 53000): QLab's real
+  `/cueLists` reply for this workspace is **~653,000 bytes**. A single UDP datagram's
+  practical ceiling is **~65,507 bytes** - about 1/10th the size. QLab attempts the UDP send,
+  but the OS's UDP layer cannot transmit a payload that large as one datagram, so it never
+  leaves. This is a hard protocol ceiling, not a timing/network-hiccup issue - **bumping the
+  client timeout cannot fix it**.
+- The identical reply, sent over TCP with SLIP framing, arrived cleanly in **~40ms**.
+- `osc.TCPSocketPort` (already present in this codebase's `osc` npm dependency) extends
+  `SLIPPort` internally, so this framing is automatic - confirmed the library's built-in TCP
+  transport produces byte-for-byte the same framing as the hand-rolled probe.
+
+See `docs/adr/0012-cuelists-tcp-transport.md` for the fix (a per-call TCP+SLIP path used only
+by `getCueLists()`).

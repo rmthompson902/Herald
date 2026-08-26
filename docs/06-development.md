@@ -23,7 +23,7 @@ modules together, and Node-RED exposes that facade via `functionGlobalContext` (
 
 | Module | Responsibility |
 |---|---|
-| `osc/oscClient.js` | Raw UDP transport, request/response correlation, timeouts |
+| `osc/oscClient.js` | OSC transport - UDP for request/response correlation and timeouts, plus a per-call TCP+SLIP path (`requestOverTcp`) for replies too large for a UDP datagram (e.g. `/cueLists`) |
 | `osc/qlabProtocol.js` | QLab verbs: duration, levels/patch, play/stop, list cues, `/updates`, `/thump` |
 | `zones/zoneResolver.js` | Derive a cue's zones (+ per-zone cue/duration) from its Audio Patch |
 | `zones/audioPatchMap.js` | Load/validate `config/audio-patch-map.json` |
