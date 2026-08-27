@@ -39,19 +39,34 @@ describe('validateSchedule', () => {
     ).toThrow(/intervalSeconds must be a positive integer/);
   });
 
-  it('validates HH:MM time format and start < end', () => {
+  it('validates HH:MM time format', () => {
     expect(() =>
       validateSchedule({ name: 'x', qlabCueNumber: 'y', intervalSeconds: 60, startTime: '9:00' })
     ).toThrow(/startTime must be HH:MM/);
+  });
+
+  it('rejects equal startTime/endTime as an ambiguous zero-length window', () => {
     expect(() =>
       validateSchedule({
         name: 'x',
         qlabCueNumber: 'y',
         intervalSeconds: 60,
-        startTime: '17:00',
+        startTime: '09:00',
         endTime: '09:00'
       })
-    ).toThrow(/startTime must be before endTime/);
+    ).toThrow(/startTime and endTime must not be equal/);
+  });
+
+  it('accepts startTime after endTime as an overnight window that wraps into the next day (see docs/adr/0013-overnight-schedule-windows.md)', () => {
+    const result = validateSchedule({
+      name: 'x',
+      qlabCueNumber: 'y',
+      intervalSeconds: 60,
+      startTime: '21:30',
+      endTime: '03:00'
+    });
+    expect(result.startTime).toBe('21:30');
+    expect(result.endTime).toBe('03:00');
   });
 
   it('validates weekdays as unique integers 1-7', () => {

@@ -30,9 +30,9 @@ def test_valid_schedule_maps_to_node_red_payload():
             "name": "S",
             "qlab_cue_number": "1101",
             "interval_seconds": 60,
-            "start_time": "17:00",
+            "start_time": "09:00",
             "end_time": "09:00",
-        },  # start after end
+        },  # equal start/end (ambiguous zero-length window)
         {
             "name": "S",
             "qlab_cue_number": "1101",
@@ -45,6 +45,20 @@ def test_valid_schedule_maps_to_node_red_payload():
 def test_invalid_schedule_rejected(kwargs):
     with pytest.raises(ValidationError):
         ScheduleRequest(**kwargs)
+
+
+def test_overnight_window_accepted():
+    # start_time after end_time is not an error - it means the active window wraps past
+    # midnight into the next day (see docs/adr/0013-overnight-schedule-windows.md).
+    req = ScheduleRequest(
+        name="Overnight",
+        qlab_cue_number="1101",
+        interval_seconds=60,
+        start_time="21:30",
+        end_time="03:00",
+    )
+    assert req.start_time == "21:30"
+    assert req.end_time == "03:00"
 
 
 def test_vog_message_requires_name_and_cue():

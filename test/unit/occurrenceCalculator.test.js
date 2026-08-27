@@ -3,6 +3,7 @@
 const {
   isoWeekday,
   isWithinActiveWindow,
+  gridTimesForDay,
   nextOccurrences,
   occurrencesUntil
 } = require('../../lib/scheduling/occurrenceCalculator');
@@ -139,6 +140,131 @@ describe('nextOccurrences - DST spring-forward (America/New_York, 2026-03-08)', 
       '03:00:00',
       '03:30:00',
       '04:00:00'
+    ]);
+  });
+});
+
+describe('gridTimesForDay - overnight windows (endTime < startTime)', () => {
+  // See docs/adr/0013-overnight-schedule-windows.md - endTime earlier than startTime means
+  // the window wraps past midnight; whether the wrap is honored depends on whether the
+  // *next* calendar day is itself allowed for this schedule.
+  it('wraps fully into the next day when the next day is allowed', () => {
+    const s = schedule({ startTime: '23:00', endTime: '01:00', intervalSeconds: 1800 }); // all weekdays
+    const cursorDay = new Date(2026, 6, 20); // Monday - Tuesday is allowed too
+
+    expect(gridTimesForDay(s, cursorDay)).toEqual([82800, 84600, 86400, 88200, 90000]);
+  });
+
+  it('truncates at 23:59:59 of cursorDay when the next day is not an allowed weekday', () => {
+    const s = schedule({
+      startTime: '23:00',
+      endTime: '01:00',
+      intervalSeconds: 1800,
+      weekdays: [1]
+    }); // Mondays only
+    const cursorDay = new Date(2026, 6, 20); // Monday - Tuesday is not allowed
+
+    expect(gridTimesForDay(s, cursorDay)).toEqual([82800, 84600]); // 23:00, 23:30 only
+  });
+
+  it('does not wrap when startTime < endTime (same-day, unaffected)', () => {
+    const s = schedule({ startTime: '09:00', endTime: '17:00', intervalSeconds: 3600 });
+    const cursorDay = new Date(2026, 6, 20);
+
+    expect(gridTimesForDay(s, cursorDay)[0]).toBe(32400); // 09:00
+    expect(gridTimesForDay(s, cursorDay).at(-1)).toBe(61200); // 17:00
+  });
+});
+
+describe('nextOccurrences - overnight windows', () => {
+  it('rolls a full-wrap occurrence onto the following calendar day when that day is allowed', () => {
+    const s = schedule({
+      startTime: '23:00',
+      endTime: '02:00',
+      intervalSeconds: 3600,
+      weekdays: [5, 6] // Friday + Saturday
+    });
+    const from = new Date(2026, 6, 24, 20, 0, 0); // Friday 8pm
+
+    const occurrences = nextOccurrences(s, from, 2);
+
+    expect(occurrences[0].getDate()).toBe(24); // Friday
+    expect(occurrences[0].toTimeString().slice(0, 8)).toBe('23:00:00');
+    expect(occurrences[1].getDate()).toBe(25); // rolled onto Saturday
+    expect(occurrences[1].toTimeString().slice(0, 8)).toBe('00:00:00');
+  });
+
+  it('truncates at midnight when only the start day is allowed (next day not checked)', () => {
+    const s = schedule({
+      startTime: '23:00',
+      endTime: '02:00',
+      intervalSeconds: 3600,
+      weekdays: [5] // Friday only
+    });
+    const from = new Date(2026, 6, 24, 20, 0, 0); // Friday 8pm
+
+    const occurrences = nextOccurrences(s, from, 2);
+
+    expect(occurrences[0].getDate()).toBe(24); // Friday 23:00 still fires
+    expect(occurrences[0].toTimeString().slice(0, 8)).toBe('23:00:00');
+    expect(occurrences[1].getDate()).toBe(31); // next Friday - nothing after midnight this week
+    expect(occurrences[1].toTimeString().slice(0, 8)).toBe('23:00:00');
+  });
+
+  it('truncates at midnight when the wrap would spill past dateRangeEnd', () => {
+    const s = schedule({
+      startTime: '23:00',
+      endTime: '02:00',
+      intervalSeconds: 3600,
+      dateRangeStart: '2026-07-01',
+      dateRangeEnd: '2026-07-24' // Friday itself is the last allowed day
+    });
+    const from = new Date(2026, 6, 24, 20, 0, 0); // Friday 8pm, within range
+
+    const occurrences = nextOccurrences(s, from, 5);
+
+    expect(occurrences).toHaveLength(1); // only Friday 23:00 - nothing past midnight, range ends there
+    expect(occurrences[0].getDate()).toBe(24);
+    expect(occurrences[0].toTimeString().slice(0, 8)).toBe('23:00:00');
+  });
+});
+
+describe('occurrencesUntil - overnight windows', () => {
+  it('includes the post-midnight occurrence when the next day is allowed', () => {
+    const s = schedule({
+      startTime: '23:00',
+      endTime: '02:00',
+      intervalSeconds: 3600,
+      weekdays: [5, 6]
+    });
+    const from = new Date(2026, 6, 24, 0, 0, 0); // Friday
+    const until = new Date(2026, 6, 25, 23, 59, 59); // through Saturday
+
+    const occurrences = occurrencesUntil(s, from, until);
+
+    expect(occurrences.map((d) => `${d.getDate()} ${d.toTimeString().slice(0, 8)}`)).toEqual([
+      '24 23:00:00',
+      '25 00:00:00', // Friday's window rolling past midnight into Saturday
+      '25 01:00:00',
+      '25 02:00:00',
+      '25 23:00:00' // Saturday's own 23:00 start (its own wrap into Sunday is outside `until`)
+    ]);
+  });
+
+  it('excludes post-midnight occurrences when the next day is not allowed', () => {
+    const s = schedule({
+      startTime: '23:00',
+      endTime: '02:00',
+      intervalSeconds: 3600,
+      weekdays: [5] // Friday only
+    });
+    const from = new Date(2026, 6, 24, 0, 0, 0); // Friday
+    const until = new Date(2026, 6, 25, 23, 59, 59); // through Saturday
+
+    const occurrences = occurrencesUntil(s, from, until);
+
+    expect(occurrences.map((d) => `${d.getDate()} ${d.toTimeString().slice(0, 8)}`)).toEqual([
+      '24 23:00:00'
     ]);
   });
 });

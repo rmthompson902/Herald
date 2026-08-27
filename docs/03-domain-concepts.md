@@ -23,7 +23,9 @@ is queued, ducked, fired, and freed **independently** — a slow zone never hold
 A **schedule** is a cue played on a recurring interval, with optional constraints:
 
 - `intervalSeconds` — how often it fires.
-- `startTime` / `endTime` — an active window within the day (`HH:MM`, DST-safe).
+- `startTime` / `endTime` — an active window (`HH:MM`, DST-safe). An `endTime` earlier than
+  `startTime` wraps the window past midnight into the next day (see
+  [ADR 0013](adr/0013-overnight-schedule-windows.md)).
 - `weekdays` — which days (1 = Monday … 7 = Sunday).
 - `dateRangeStart` / `dateRangeEnd` — an overall active date range.
 - `enabled` — the on/off toggle.

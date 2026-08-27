@@ -61,9 +61,11 @@ class ScheduleRequest(BaseModel):
         return sorted(value)
 
     @model_validator(mode="after")
-    def start_before_end(self) -> "ScheduleRequest":
-        if self.start_time is not None and self.end_time is not None and self.start_time >= self.end_time:
-            raise ValueError("start_time must be before end_time")
+    def start_end_not_equal(self) -> "ScheduleRequest":
+        # end_time earlier than start_time is not an error - it means the active window
+        # wraps past midnight into the next day (see docs/adr/0013-overnight-schedule-windows.md).
+        if self.start_time is not None and self.end_time is not None and self.start_time == self.end_time:
+            raise ValueError("start_time and end_time must not be equal")
         return self
 
     @model_validator(mode="after")
