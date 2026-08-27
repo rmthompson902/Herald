@@ -228,6 +228,23 @@ body.app-theme {
     font-weight: 500;
     transition: all var(--transition-fast);
     padding: 0.5rem 1rem;
+    white-space: nowrap;
+}
+
+/* Row action-button groups (VOG/schedules/zones list rows): a longer sibling label
+   elsewhere in the row (e.g. a "Disarmed" status badge) can squeeze this flex container
+   below its buttons' natural width. Without this, the default align-items:stretch would
+   still stretch icon-only siblings to match a taller sibling's height (breaking their icon's
+   vertical centering) if any button's content ever grew taller than one line - the
+   white-space:nowrap above already prevents that, but this stays as a second line of
+   defense. Deliberately NOT setting display:flex on individual buttons (e.g.
+   .action-btn-notext) - Font Awesome icons set their own line-height:1, and a flex
+   container sizes to a blockified icon child's own line-height rather than the button's
+   inherited one, which quietly shrinks icon-only buttons short of their intended square
+   size. */
+.d-inline-flex.gap-1 {
+    align-items: center;
+    flex-wrap: nowrap;
 }
 
 .btn-primary {
