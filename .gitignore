@@ -5,7 +5,9 @@ webapp/__pycache__/
 webapp/**/__pycache__/
 webapp/.env
 
-data/
+data/*
+!data/backups/
+!data/backups/**
 data.bak.*/
 
 logs/
