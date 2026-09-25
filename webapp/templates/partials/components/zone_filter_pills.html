@@ -1,0 +1,21 @@
+{% macro zone_filter_pills(zone_names, has_unassigned) %}
+{#
+Single-select zone filter for a flat sortable-table (schedules and VOG pages) - shared so
+both filter identically. Behavior lives in static/js/utils/zone-filter.js, which wires up
+any [data-zone-pill] button and hides/shows the matching table's `tr.sortable-row`s based on
+each row's `data-zones` attribute. "All" is active by default and never persisted across a
+page load, matching sortable-tables.js's own no-persistence convention.
+
+Usage:
+{{ zfp.zone_filter_pills(zone_names, has_unassigned) }}
+#}
+<div class="zone-filter-pills d-flex flex-wrap gap-2 mb-3">
+    <button type="button" class="btn btn-sm btn-outline-secondary active" data-zone-pill="all">All</button>
+    {% for zone in zone_names %}
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-zone-pill="{{ zone }}">{{ zone }}</button>
+    {% endfor %}
+    {% if has_unassigned %}
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-zone-pill="unassigned">Unassigned</button>
+    {% endif %}
+</div>
+{% endmacro %}

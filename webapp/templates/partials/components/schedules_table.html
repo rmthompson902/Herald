@@ -2,25 +2,23 @@
 {% import "partials/components/action_button.html" as ab %}
 {% import "partials/components/empty_state.html" as es %}
 
-{% macro schedules_table(title, schedules, cue_cache_by_number, empty_message) %}
+{% macro schedules_table(schedules, cue_cache_by_number) %}
 {#
-One zone's worth of the schedules list - every per-zone table on the schedules page (and
-the "Not Yet Assigned" table) is this exact same macro, just called with a different title/
-schedule subset, so they can never visually or behaviorally drift apart from one another.
+The single flat schedules table (see zone_filter_pills.html for the zone filter above it) -
+one row per schedule regardless of how many zones its cue resolves to, ordered start-to-finish
+by startTime (computed server-side in pages.py's _render_schedules_list).
 
 Usage:
-{{ schedules_table('Zone 1', schedules_by_zone['Zone 1'], cue_cache_by_number, 'No schedules target Zone 1 yet.') }}
+{{ schedules_table(schedules, cue_cache_by_number) }}
 #}
 <div class="card mb-4">
-    <div class="card-header">
-        <h5 class="mb-0">{{ title }}</h5>
-    </div>
     <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0 sortable-table" data-default-sort-key="cue" data-default-sort-type="number">
+        <table class="table table-hover align-middle mb-0 sortable-table" data-default-sort-key="timing" data-default-sort-type="number">
             <thead>
                 <tr>
                     <th class="sortable-column" data-sort-key="name" data-sort-type="text">Name</th>
                     <th class="sortable-column" data-sort-key="cue" data-sort-type="number">Cue</th>
+                    <th class="sortable-column" data-sort-key="zones" data-sort-type="text">Zones</th>
                     <th class="sortable-column" data-sort-key="duration" data-sort-type="number">Duration</th>
                     <th class="sortable-column" data-sort-key="timing" data-sort-type="number">Timing</th>
                     <th>Next Fire</th>
@@ -30,13 +28,20 @@ Usage:
             </thead>
             <tbody>
                 {% if not schedules %}
-                    {{ es.table_empty_state('check-circle', empty_message, colspan=7) }}
+                    {{ es.table_empty_state('check-circle', 'No schedules yet.', colspan=8) }}
                 {% else %}
                 {% for schedule in schedules %}
                 {% set cue = cue_cache_by_number.get(schedule.qlabCueNumber) %}
-                <tr class="sortable-row">
+                <tr class="sortable-row" data-zones="{{ schedule.zones|join(',') }}">
                     <td>{{ schedule.name }}</td>
                     <td data-sort-value="{{ schedule.qlabCueNumber }}"><code>{{ schedule.qlabCueNumber }}</code></td>
+                    <td data-sort-value="{{ schedule.zones|join(', ') }}">
+                        {% if schedule.zones %}
+                            {% for zone in schedule.zones %}<span class="badge bg-secondary me-1">{{ zone }}</span>{% endfor %}
+                        {% else %}
+                            <span class="text-muted">Unassigned</span>
+                        {% endif %}
+                    </td>
                     <td data-sort-value="{{ cue.durationSeconds if cue and cue.durationSeconds is not none else '' }}">
                         {% if cue and cue.durationSeconds is not none %}
                             {{ '%.1f'|format(cue.durationSeconds) }}s
@@ -44,7 +49,7 @@ Usage:
                             <span class="text-muted">&mdash;</span>
                         {% endif %}
                     </td>
-                    <td data-sort-value="{{ schedule.intervalSeconds }}">
+                    <td data-sort-value="{{ schedule.startSeconds }}">
                         every {{ schedule.intervalSeconds }}s
                         {% if schedule.startTime and schedule.endTime %}
                             &middot; {{ schedule.startTime }}&ndash;{{ schedule.endTime }}
@@ -69,6 +74,11 @@ Usage:
                     </td>
                 </tr>
                 {% endfor %}
+                <tr class="zone-empty-row d-none">
+                    <td colspan="8" class="text-center text-muted py-4">
+                        <i class="fas fa-check-circle me-2"></i>No schedules in this zone.
+                    </td>
+                </tr>
                 {% endif %}
             </tbody>
         </table>

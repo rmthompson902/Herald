@@ -3,6 +3,7 @@
 {% import "partials/components/empty_state.html" as es %}
 {% import "partials/components/status_badge.html" as sb %}
 {% import "partials/components/action_button.html" as ab %}
+{% import "partials/components/zone_filter_pills.html" as zfp %}
 
 {% block title %}VOG Messages - Herald{% endblock %}
 
@@ -10,8 +11,8 @@
 {% set actions = [] %}
 {% if vog_messages %}
     {% set actions = actions + [
-        {'type': 'button', 'id': 'enableAllVogBtn', 'text': 'Arm All', 'icon': 'fas fa-shield-alt', 'class': 'btn-outline-success', 'tooltip': 'Enable every VOG message'},
-        {'type': 'button', 'id': 'disableAllVogBtn', 'text': 'Disarm All', 'icon': 'fas fa-exclamation-triangle', 'class': 'btn-outline-warning', 'tooltip': 'Disable every VOG message'}
+        {'type': 'button', 'id': 'enableAllVogBtn', 'text': 'Arm All', 'icon': 'fas fa-shield-alt', 'class': 'btn-outline-success', 'tooltip': 'Enable every VOG message, affects all zones'},
+        {'type': 'button', 'id': 'disableAllVogBtn', 'text': 'Disarm All', 'icon': 'fas fa-exclamation-triangle', 'class': 'btn-outline-warning', 'tooltip': 'Disable every VOG message, affects all zones'}
     ] %}
 {% endif %}
 {% set actions = actions + [{'type': 'link', 'url': url_for('vog_new'), 'text': 'Add VOG Message', 'icon': 'fas fa-plus', 'class': 'btn-primary'}] %}
@@ -24,6 +25,7 @@
 {% if not vog_messages %}
     {{ es.empty_state('bullhorn', 'No VOG messages yet', 'Add an emergency message so it is ready to trigger.', 'Add VOG Message', url_for('vog_new')) }}
 {% else %}
+    {{ zfp.zone_filter_pills(zone_names, has_unassigned) }}
 <div class="card">
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0 sortable-table" data-default-sort-key="cue" data-default-sort-type="number">
@@ -39,14 +41,16 @@
             <tbody>
                 {% for vog_message in vog_messages %}
                 {% set cue = cue_cache_by_number.get(vog_message.qlabCueNumber) %}
-                <tr class="sortable-row">
+                <tr class="sortable-row" data-zones="{{ vog_message.zones|join(',') }}">
                     <td>{{ vog_message.name }}</td>
                     <td data-sort-value="{{ vog_message.qlabCueNumber }}"><code>{{ vog_message.qlabCueNumber }}</code></td>
-                    <td data-sort-value="{{ (cue.zones|join(', ')) if cue and cue.zones else '' }}">
-                        {% if cue and cue.zones %}
-                            {% for zone in cue.zones %}<span class="badge bg-secondary me-1">{{ zone }}</span>{% endfor %}
-                        {% else %}
+                    <td data-sort-value="{{ vog_message.zones|join(', ') }}">
+                        {% if vog_message.zones %}
+                            {% for zone in vog_message.zones %}<span class="badge bg-secondary me-1">{{ zone }}</span>{% endfor %}
+                        {% elif not cue %}
                             <span class="text-muted">not yet cached</span>
+                        {% else %}
+                            <span class="text-muted">Unassigned</span>
                         {% endif %}
                     </td>
                     <td>{{ sb.vog_armed_status_badge(vog_message.enabled) }}</td>
@@ -68,6 +72,11 @@
                     </td>
                 </tr>
                 {% endfor %}
+                <tr class="zone-empty-row d-none">
+                    <td colspan="5" class="text-center text-muted py-4">
+                        <i class="fas fa-check-circle me-2"></i>No VOG messages in this zone.
+                    </td>
+                </tr>
             </tbody>
         </table>
     </div>

@@ -16,28 +16,48 @@ from app.templating import templates
 router = APIRouter()
 
 
+def _matched_zones(cue: dict | None, zone_names: list[str]) -> list[str]:
+    """A cue's zones, filtered down to only the venue's currently configured ones - a
+    schedule/VOG message whose cue resolves to a zone that's since been renamed/removed
+    (or whose cue_cache is stale/missing) is "unassigned" rather than silently mismatched."""
+    zones = cue["zones"] if cue else []
+    return [zone for zone in zones if zone in zone_names]
+
+
+def _cue_sort_key(qlab_cue_number: str) -> tuple[int, float | str]:
+    """Ascending numeric cue-number order, e.g. "9" before "10" - falls back to a plain
+    string compare for the rare non-numeric cue number rather than raising."""
+    try:
+        return (0, float(qlab_cue_number))
+    except ValueError:
+        return (1, qlab_cue_number)
+
+
+def _start_seconds(hhmm: str | None) -> int:
+    """Seconds-since-midnight for a schedule's startTime, for the start-to-finish rundown
+    ordering - a schedule with no startTime runs all day, so it sorts as if starting at
+    midnight (see docs/03-domain-concepts.md). Display-only: doesn't need to match
+    lib/scheduling/occurrenceCalculator.js's wrap/validation semantics."""
+    if not hhmm:
+        return 0
+    hours, minutes = hhmm.split(":")
+    return int(hours) * 3600 + int(minutes) * 60
+
+
 def _render_schedules_list(request: Request):
     schedules = queries.list_schedules()
     cue_cache_by_number = {c["qlabCueNumber"]: c for c in queries.list_cue_cache()}
     zone_names = list_zone_names()
 
-    # One table per configured zone (see app/audio_patch_map.py) - a schedule whose cue
-    # resolves to more than one zone (a multi-zone Group cue) appears in every one of those
-    # zones' tables, since each zone now admits/ducks/fires/frees it completely
-    # independently (see lib/queue/zoneQueueEngine.js's per-zone decomposition). A schedule
-    # not yet resolved to any configured zone (cue_cache stale/missing, or a genuine
-    # mismatch) falls into "Not Yet Assigned" rather than silently disappearing.
-    schedules_by_zone: dict[str, list] = {zone: [] for zone in zone_names}
-    unassigned_schedules = []
+    # A single flat table now (no more one-table-per-zone) - a schedule whose cue resolves
+    # to more than one zone (a multi-zone Group cue) is one row with multiple zone badges,
+    # filterable via the zone pills rather than duplicated across separate tables. Ordered
+    # start-to-finish by startTime so the page reads like a rundown of the day.
     for schedule in schedules:
-        cue = cue_cache_by_number.get(schedule["qlabCueNumber"])
-        zones = cue["zones"] if cue else []
-        matched_zones = [zone for zone in zones if zone in schedules_by_zone]
-        if matched_zones:
-            for zone in matched_zones:
-                schedules_by_zone[zone].append(schedule)
-        else:
-            unassigned_schedules.append(schedule)
+        schedule["zones"] = _matched_zones(cue_cache_by_number.get(schedule["qlabCueNumber"]), zone_names)
+        schedule["startSeconds"] = _start_seconds(schedule["startTime"])
+    schedules.sort(key=lambda s: (s["startSeconds"], _cue_sort_key(s["qlabCueNumber"])))
+    has_unassigned = any(not s["zones"] for s in schedules)
 
     return templates.TemplateResponse(
         request,
@@ -45,8 +65,8 @@ def _render_schedules_list(request: Request):
         {
             "has_schedules": bool(schedules),
             "zone_names": zone_names,
-            "schedules_by_zone": schedules_by_zone,
-            "unassigned_schedules": unassigned_schedules,
+            "has_unassigned": has_unassigned,
+            "schedules": schedules,
             "cue_cache_by_number": cue_cache_by_number,
         },
     )
@@ -86,10 +106,22 @@ async def queue_visualizer(request: Request):
 def _render_vog_list(request: Request):
     vog_messages = queries.list_vog_messages()
     cue_cache_by_number = {c["qlabCueNumber"]: c for c in queries.list_cue_cache()}
+    zone_names = list_zone_names()
+
+    for vog_message in vog_messages:
+        vog_message["zones"] = _matched_zones(cue_cache_by_number.get(vog_message["qlabCueNumber"]), zone_names)
+    vog_messages.sort(key=lambda v: _cue_sort_key(v["qlabCueNumber"]))
+    has_unassigned = any(not v["zones"] for v in vog_messages)
+
     return templates.TemplateResponse(
         request,
         "vog/list.html",
-        {"vog_messages": vog_messages, "cue_cache_by_number": cue_cache_by_number},
+        {
+            "vog_messages": vog_messages,
+            "cue_cache_by_number": cue_cache_by_number,
+            "zone_names": zone_names,
+            "has_unassigned": has_unassigned,
+        },
     )
 
 
